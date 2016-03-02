@@ -2,96 +2,137 @@ import numpy as np
 from scipy.integrate import ode
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
+from scipy.interpolate import NearestNDInterpolator
+import pandas as pd
 
-directory = '/home/laynep/reion_importance/'
+import mpmath as mpm
+
 
 #Define the redshift evolution of f_esc
 f_esc_flag ='Power'
-if f_esc_flag == 'Power':
-    
-    def f_esc_funct(z,f_esc):
+data_type = "tau_only"
+#data_type = "marg_cosmo"
+
+directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+
+class f_esc_funct():
+
+    def __init__(self,f_esc_flag, f_esc_params):
+
+        if f_esc_flag == "Power":
+            self.f_esc = lambda z: self.f_esc_POWER(z, f_esc_params)
+        elif f_esc_flag == "Tanh":
+            self.f_esc = lambda z: self.f_esc_TANH(z, f_esc_params)
+        elif f_esc_flag == "Polint":
+
+            self.z_pos = np.linspace(3,15,5)
+            self.f_polint = interp1d(z_pos, f_esc_params[0:5], kind='cubic')
+            self.f_esc = self.f_esc_POLINT
+        else:
+            raise Exception('This f_esc_flag not implemented.')
+
+
+    def f_esc_POWER(self, z, f_esc):
         f6 = f_esc[0]
         alpha = f_esc[1]
-        
+
         out = f6*((1.0+z)/7.0)**alpha
-        
+
         return np.min([np.max([0.0, out]), 1.0])
-    
-elif f_esc_flag == 'Polint':
-    
-    def f_esc_funct(z,f_esc):
-        z_pos = np.linspace(3,20,10)
-        
-        if z< np.min(z_pos):
+
+    def f_esc_POLINT(self, z):
+
+        if z< np.min(self.z_pos):
             return f_esc[0]
-        elif z>np.max(z_pos):
+        elif z>np.max(self.z_pos):
             return f_esc[-1]
         else:
-            f_funct = interp1d(z_pos, f_esc, kind='cubic')
-            return np.min([np.max([0.0, f_funct(z)]), 1.0])
+            return np.min([np.max([0.0, self.f_polint(z)]), 1.0])
 
-else:
-    
-    raise Exception('This f_esc function not implemented.')
+    def f_esc_TANH(self, z,f_esc):
+        f_inf = f_esc[0]
+        f_0 = f_esc[1]
+        z_half = f_esc[2]
+        dz = f_esc[3]
+
+        f_out = 0.5*(f_inf-f_0)*np.tanh((z-z_half)/dz) + 0.5*(f_inf+f_0)
+        return np.min([np.max([0.0, f_out]), 1.0])
+
+
 
 #Fixed params
 class global_params():
-    
+
     def __init__(self):
         """Some general set up required."""
-    
+
         self.m_bright = -35.0
         self.photon_norm_factor = 25.2
-        
+
         self.T0_IGM = 2.0e4
         self.X_h = 0.747
         self.HeII_z = 3.5
-        
+
         self.schecter_fname = directory + 'schecter_params.txt'
         schecter = np.loadtxt(self.schecter_fname)
         self.z_list = schecter[:,0]
         self.phi_list = schecter[:,1]
         self.m_list = schecter[:,2]
         self.alpha_list = schecter[:,3]
-        
+
         self.mpc_to_cm = 3.086e24
         self.mass_h = 1.674e-24
         self.G_newton = 6.674e-8
         self.sigT = 6.6524e-25
         self.c = 2.998e10
-        
-        #Can also be iterated over if edit the unpack routine
-        self.h = 0.7
-        self.ombh2 = 0.045*self.h**2
-        self.ommh2 = (0.045+0.355)*self.h**2
-        
-        self.tau_post_fname =directory + 'posterior_tauonly.txt'
-        tau_pdf = np.loadtxt(self.tau_post_fname)
-        self.tau_list = tau_pdf[:,1]
-        self.taupdf_list = tau_pdf[:,0]
 
-    
+        #Can also be iterated over
+        self.h = 0.7
+        #self.ommh2 = 0.27*self.h**2
+        self.ommh2 = 0.3*self.h**2
+        self.ombh2 = 0.045*self.h**2
+
+        if data_type == "tau_only":
+            self.tau_post_fname =directory + 'posterior_tauonly.txt'
+            tau_pdf = np.loadtxt(self.tau_post_fname)
+            self.tau_list = tau_pdf[:,1]
+            self.taupdf_list = tau_pdf[:,0]
+        elif data_type == "marg_cosmo":
+            self.data_margcosmo = pd.read_csv(directory + 'total_margcosmo.txt')
+
+
 globe = global_params()
 
 def unpack(x):
-    
+
     y = np.array(x)
-    
+
     if f_esc_flag=="Power":
         offset=2
-        f_esc = x[0:offset]
+    elif f_esc_flag=="Polint":
+        offset=5
+    elif f_esc_flag=="Tanh":
+        offset=4
     else:
-        offset=10
-        f_esc = x[0:offset]
-        
+        raise Exception('This f_esc_flag not supported.')
+
+    f_esc_params = x[0:offset]
     c_hii = x[offset]
     m_sf = x[offset+1]
     m_evol = x[offset+2]
-    
-    #Can get these either from x or from fixed
-    ombh2 = globe.ombh2
-    ommh2 = globe.ommh2
-    return f_esc, c_hii, m_sf, m_evol, ombh2, ommh2
+
+    if data_type == "tau_only":
+        #Can get these either from x or from fixed
+        ombh2 = globe.ombh2
+        ommh2 = globe.ommh2
+    elif data_type == "marg_cosmo":
+        ombh2 = x[offset+3]
+        ommh2 = x[offset+4]
+    else:
+        raise Exception('This data_type not supported.')
+
+    return f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2
 
 def mag_to_lumin(mag):
     """Converts AB magnitude to luminosity."""
@@ -130,9 +171,13 @@ def ioniz_emiss(z, m_sf, m_evol, f_esc):
 
     prefactor = -2.5/np.log(10.0)
     prefactor *= 10.0**(globe.photon_norm_factor)
-    prefactor *= f_esc_funct(z, f_esc)*phi_star*L_star
+    prefactor *= f_esc.f_esc(z)*phi_star*L_star
 
-    return prefactor*(alpha+1.0)**(-1.0)*(L_faint/L_star)**(alpha+1.0)
+    if alpha<-2.0:
+        #Close approximation
+        return prefactor*(alpha+1.0)**(-1.0)*(L_faint/L_star)**(alpha+1.0)
+    else:
+        return prefactor*(mpm.gammainc(1.0+alpha,L_bright/L_star) - mpm.gammainc(1.0+alpha,L_faint/L_star))
 
 def t_recomb(z, c_hii):
     prefactor = 0.93*1e9*365.25*24.0*60.0*60.0 #Gyr to sec
@@ -155,31 +200,36 @@ def electron_from_helium(z):
         return 1.0
     else:
         return 2.0
-          
+
 
 def tau_calculator(x):
     """Calculate the Thomson optical depth from the galaxy reionization parameters."""
-    f_esc, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
-    
-    Q0 = 2.1979099400481504e-004 #From CAMB, connects to residual ionization from recombination
-    
+    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+
+    #Initiate f_esc object
+    f_esc = f_esc_funct(f_esc_flag, f_esc_params)
+
+
     def derivs(z, Q):
         """The Q'(z0) = derivs(z, Q)"""
-        
+
         hub = hubble(z, ommh2)
         trec = t_recomb(z, c_hii)
         nh = comov_h_density(ombh2)
         ion = ioniz_emiss(z,m_sf, m_evol, f_esc)
-        
+
         return -1.0*(1.0/hub/(1.0+z))*(ion/nh/(1.0+z)**3.0 - Q/trec)
-    
+
     #Solve the ODE for the volume filling factor Q
     solver = ode(derivs).set_integrator("vode")
-    
+
+    #ICs
+    Q0 = 2.1979099400481504e-004 #From CAMB, connects to residual ionization from recombination
     z0= 25.0
     solver.set_initial_value(Q0,z0)
-    
-    dz = -z0/100.0
+
+    nsteps = 100.0
+    dz = -z0/nsteps
     z_ode = []
     Q_ode = []
     while solver.successful() and solver.t > 0.0 and solver.y<1.0 and solver.y>0.0:
@@ -187,8 +237,8 @@ def tau_calculator(x):
         z_ode.append(solver.t)
         Q_ode.append(solver.y)
         #print solver.t, solver.y
-        
-        
+
+
     #Set up interpolating function
     naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='cubic')
     def Q_of_z(z):
@@ -199,88 +249,137 @@ def tau_calculator(x):
             Q=Q_ode[0]
         else:
             Q = np.max([np.min([1.0,naive_Q(z)]),0.0])
-        
+
         return Q
-        
+
     #Integrate Q to get \tau
     def tau_integrand(z):
         prefactor = globe.sigT*globe.c*1e-2*comov_h_density(ombh2)*globe.mpc_to_cm/1e5/np.sqrt(ommh2)
-        
+
         integrand = Q_of_z(z)*np.sqrt(1.0+z)*(1.0+(1.0-globe.X_h)/(4.0*globe.X_h)*electron_from_helium(z))
-        
+
         return prefactor*integrand
-    
+
     #Calculate \tau
     (tau, dtau) = quad(tau_integrand, 0.0, z0)
-    
+
     if dtau > 1e-4:
         raise Exception('tau integrator has large error.')
-    
+
     return tau, Q_of_z
 
 
 def logprior(x):
-    f_esc, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
-    
+    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+
     bad = False
     const = 1.0  #Unnormalized prior
 
     #Prior ranges
     if f_esc_flag=='Power':
-        if f_esc[0]<0.0 or f_esc[0]>1.0:
+        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
             bad = True
-        elif f_esc[1]<0.0 or f_esc[1]>4.0:
+        elif f_esc_params[1]<0.0 or f_esc_params[1]>4.0:
             bad = True
     elif f_esc_flag=="Polint":
-        if any(f_esc<0.0) or any(f_esc>1.0):
+        if any(f_esc_params<0.0) or any(f_esc_params>1.0):
             bad = True
+    elif f_esc_flag == "Tanh":
+        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+            bad = True
+        if f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
+            bad = True
+        if f_esc_params[2]<0.01 or f_esc_params[2]>1.0:
+            bad = True
+        if f_esc_params[3]<0.0 or f_esc_params[3]>25.0:
+            bad = True
+    else:
+        raise Exception('This f_esc_flag not implemented')
+
     if c_hii<1.0 or c_hii>5.0:
         bad = True
     if m_sf<-11.0 or m_sf >-9.5:
         bad = True
     if m_evol <-0.035 or m_evol>-0.031:
         bad = True
-        
-    if bad:
-        return -np.inf
-    else:
-        return const
 
-def loglike(tau):
-    #Likelihood just from the LCDM tau values (tau-only or cosmo marginalized)
-    post_funct = interp1d(globe.tau_list, globe.taupdf_list,kind='cubic')
-    
-    if tau<np.min(globe.tau_list) or tau > np.max(globe.tau_list):
-        return -np.inf
+    if bad:
+        return -np.inf, False
     else:
-    
-        #print "This is post_funct", post_funct(tau)
-        post = np.max([0.0,post_funct(tau)])
-                
-        if post==0.0:
+        return const, True
+
+def loglike(tau,x):
+    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+
+    if data_type=="tau_only":
+
+        if tau<np.min(globe.tau_list) or tau > np.max(globe.tau_list):
             return -np.inf
         else:
-            return np.log(post)
-    
+
+            #Likelihood just from the LCDM tau values with cosmo params fixed
+            post_funct = interp1d(globe.tau_list, globe.taupdf_list,kind='cubic')
+
+            #print "This is post_funct", post_funct(tau)
+            post = np.max([0.0,post_funct(tau)])
+
+            if post<=0.0:
+                return -np.inf
+            else:
+                return np.log(post)
+
+    elif data_type == "marg_cosmo":
+
+        if tau<np.min(globe.data_margcosmo['tau']) or tau > np.max(globe.data_margcosmo['tau']):
+            print "Caught by tau"
+            return -np.inf
+        elif ombh2<np.min(globe.data_margcosmo['omegabh2']) or ombh2 > np.max(globe.data_margcosmo['omegabh2']):
+            print "Caught by ombh2"
+            return -np.inf
+        elif ommh2<np.min(globe.data_margcosmo['omegamh2']) or ommh2 > np.max(globe.data_margcosmo['omegamh2']):
+            print "Caught by ommh2"
+            return -np.inf
+        else:
+
+            #Only really feasible to do nearest neighbors interpolation here
+            #Here we assume flat priors in LCDM so that like=post
+            post_funct = NearestNDInterpolator(
+                np.array(globe.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                np.array(globe.data_margcosmo['like']))
+
+            post = np.max([0.0,post_funct([ombh2,ommh2,tau])])
+
+            #print "this is post:", post
+
+            if post<=0.0:
+                return -np.inf
+            else:
+                #return np.log(post)
+                return post #Like is already log-like
+
+    else:
+        raise Exception('This data type not supported.')
+
 
 def logpost(x):
 
-    f_esc, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
-        
-    prior = logprior(x)
-    
+    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+
+    prior, success = logprior(x)
+    if not success:
+        return prior
+
     #Likelihood
-    
+
     tau, Q = tau_calculator(x)
-    
+
+    #print "this is tau", tau, Q(5.9)
+
     #Implement 2sig constraint from 1411.5375 as a step function
     if Q(z=5.9)<0.84:
         like = -np.inf
-    
+
     else:
-        like = loglike(tau)
-    
-    #print "tau and Q(5.9)", tau, Q(5.9)
-    
-    
+        like = loglike(tau, x)
+
     return prior + like
