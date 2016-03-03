@@ -2,7 +2,6 @@ import numpy as np
 from scipy.integrate import ode
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
 from scipy.interpolate import NearestNDInterpolator
 import pandas as pd
 
@@ -14,7 +13,9 @@ f_esc_flag ='Power'
 data_type = "tau_only"
 #data_type = "marg_cosmo"
 
-directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+directory = '/home/laynep/reion_importance/'
+
 
 class f_esc_funct():
 
