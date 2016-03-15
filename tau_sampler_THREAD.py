@@ -3,26 +3,41 @@ import tau_calculator as tau
 import emcee
 import numpy as np
 
-ndim = 5
-nwalkers = 200
-niterations = 1000
+nwalkers = 300
+niterations = 2000
 
-nthreads = 12
+nthreads = 16
 
-save_fname = "chain2.dat"
+#save_fname = "chain_polint.dat"
+#save_fname = "chain_polint_margcosmo.dat"
+save_fname = "chain_margcosmo.dat"
 
-p0_random = False
+p0_random = True
 p0_file = "chain.dat"
+
+if tau.f_esc_flag == "Power":
+    ndim = 5
+elif tau.f_esc_flag == "Polint":
+    ndim = 7
+
+if tau.data_type == "marg_cosmo":
+    ndim += 2
 
 if p0_random:
     p0=[]
     for walker in xrange(nwalkers):
         p0_here = []
-        p0_here.append(np.random.rand()) #f_6
-        p0_here.append(np.random.rand()*4.0) #\alpha
+        if tau.f_esc_flag == "Power":
+            p0_here.append(np.random.rand()) #f_6
+            p0_here.append(np.random.rand()*4.0) #\alpha
+        elif tau.f_esc_flag == "Polint":
+            p0_here.append(np.random.rand()) #f_3
+            p0_here.append(np.random.rand()) #f_6
+            p0_here.append(np.random.rand()) #f_9
+            p0_here.append(np.random.rand()) #f_12
         p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII
         p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
-        p0_here.append(np.random.rand()*(-0.031 + 0.035) - 0.035) #M_SF'
+        p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
     
         if tau.data_type == "marg_cosmo":
             p0_here.append(np.random.normal(tau.globe.ombh2,tau.globe.ombh2*0.01)) #ombh2

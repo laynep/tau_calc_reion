@@ -6,10 +6,12 @@ from scipy.interpolate import NearestNDInterpolator
 import pandas as pd
 
 import mpmath as mpm
+import sys
 
 
 #Define the redshift evolution of f_esc
 f_esc_flag ='Power'
+#f_esc_flag ='Polint'
 data_type = "tau_only"
 #data_type = "marg_cosmo"
 
@@ -27,9 +29,9 @@ class f_esc_funct():
             self.f_esc = lambda z: self.f_esc_TANH(z, f_esc_params)
         elif f_esc_flag == "Polint":
 
-            self.z_pos = np.linspace(3,15,5)
-            self.f_polint = interp1d(z_pos, f_esc_params[0:5], kind='cubic')
-            self.f_esc = self.f_esc_POLINT
+            self.z_pos = np.linspace(3,12,4)
+            self.f_polint = interp1d(self.z_pos, f_esc_params[0:4], kind='cubic')
+            self.f_esc = lambda z: self.f_esc_POLINT(z, f_esc_params)
         else:
             raise Exception('This f_esc_flag not implemented.')
 
@@ -42,7 +44,7 @@ class f_esc_funct():
 
         return np.min([np.max([0.0, out]), 1.0])
 
-    def f_esc_POLINT(self, z):
+    def f_esc_POLINT(self, z, f_esc):
 
         if z< np.min(self.z_pos):
             return f_esc[0]
@@ -73,7 +75,7 @@ class global_params():
 
         self.T0_IGM = 2.0e4
         self.X_h = 0.747
-        self.HeII_z = 3.5
+        self.HeII_z = 3.0
 
         self.schecter_fname = directory + 'schecter_params.txt'
         schecter = np.loadtxt(self.schecter_fname)
@@ -112,7 +114,7 @@ def unpack(x):
     if f_esc_flag=="Power":
         offset=2
     elif f_esc_flag=="Polint":
-        offset=5
+        offset=4
     elif f_esc_flag=="Tanh":
         offset=4
     else:
@@ -301,7 +303,7 @@ def logprior(x):
         bad = True
     if m_sf<-11.0 or m_sf >-9.5:
         bad = True
-    if m_evol <-0.035 or m_evol>-0.031:
+    if m_evol <-0.4 or m_evol>-0.30:
         bad = True
 
     if bad:
