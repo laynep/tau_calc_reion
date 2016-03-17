@@ -16,9 +16,9 @@ p0_random = True
 p0_file = "chain.dat"
 
 if tau.f_esc_flag == "Power":
-    ndim = 5
+    ndim = 6
 elif tau.f_esc_flag == "Polint":
-    ndim = 7
+    ndim = 8
 
 if tau.data_type == "marg_cosmo":
     ndim += 2
@@ -38,6 +38,7 @@ if p0_random:
         p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII
         p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
         p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
+        p0_here.append(np.random.rand()*(26.0 - 24.0) + 24.0) #Photon norm
     
         if tau.data_type == "marg_cosmo":
             p0_here.append(np.random.normal(tau.globe.ombh2,tau.globe.ombh2*0.01)) #ombh2

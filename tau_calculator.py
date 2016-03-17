@@ -15,8 +15,8 @@ f_esc_flag ='Power'
 data_type = "tau_only"
 #data_type = "marg_cosmo"
 
-#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
-directory = '/home/laynep/reion_importance/'
+directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+#directory = '/home/laynep/reion_importance/'
 
 
 class f_esc_funct():
@@ -71,13 +71,14 @@ class global_params():
         """Some general set up required."""
 
         self.m_bright = -35.0
-        self.photon_norm_factor = 25.2
+        #self.photon_norm_factor = 25.2
 
         self.T0_IGM = 2.0e4
         self.X_h = 0.747
         self.HeII_z = 3.0
 
-        self.schecter_fname = directory + 'schecter_params.txt'
+        #self.schecter_fname = directory + 'schecter_params.txt'
+        self.schecter_fname = directory + 'schecter_params_Bouwens.txt'
         schecter = np.loadtxt(self.schecter_fname)
         self.z_list = schecter[:,0]
         self.phi_list = schecter[:,1]
@@ -90,11 +91,17 @@ class global_params():
         self.sigT = 6.6524e-25
         self.c = 2.998e10
 
-        #Can also be iterated over
-        self.h = 0.7
-        #self.ommh2 = 0.27*self.h**2
-        self.ommh2 = 0.3*self.h**2
-        self.ombh2 = 0.045*self.h**2
+        #Planck2015 best fit
+        self.h = 0.6727
+        self.ommh2 = 0.02225+0.1198
+        self.ombh2 = 0.02225
+
+        #Scorch I
+        ##Can also be iterated over
+        #self.h = 0.7
+        ##self.ommh2 = 0.27*self.h**2
+        #self.ommh2 = 0.3*self.h**2
+        #self.ombh2 = 0.045*self.h**2
 
         if data_type == "tau_only":
             self.tau_post_fname =directory + 'posterior_tauonly.txt'
@@ -124,18 +131,19 @@ def unpack(x):
     c_hii = x[offset]
     m_sf = x[offset+1]
     m_evol = x[offset+2]
+    photon_norm_factor = x[offset+3]
 
     if data_type == "tau_only":
         #Can get these either from x or from fixed
         ombh2 = globe.ombh2
         ommh2 = globe.ommh2
     elif data_type == "marg_cosmo":
-        ombh2 = x[offset+3]
-        ommh2 = x[offset+4]
+        ombh2 = x[offset+4]
+        ommh2 = x[offset+5]
     else:
         raise Exception('This data_type not supported.')
 
-    return f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2
+    return f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2
 
 def mag_to_lumin(mag):
     """Converts AB magnitude to luminosity."""
@@ -165,7 +173,7 @@ def schecter_params(z):
 
     return float(phi_star), float(L_star), float(alpha_star)
 
-def ioniz_emiss(z, m_sf, m_evol, f_esc):
+def ioniz_emiss(z, m_sf, m_evol, f_esc, photon_norm_factor):
     m_faint = m_sf + m_evol*(z-6.0)
     L_bright = mag_to_lumin(globe.m_bright)
     L_faint = mag_to_lumin(m_faint)
@@ -173,7 +181,7 @@ def ioniz_emiss(z, m_sf, m_evol, f_esc):
     phi_star, L_star, alpha = schecter_params(z)
 
     prefactor = -2.5/np.log(10.0)
-    prefactor *= 10.0**(globe.photon_norm_factor)
+    prefactor *= 10.0**(photon_norm_factor)
     prefactor *= f_esc.f_esc(z)*phi_star*L_star
 
     if alpha<-2.0:
@@ -207,7 +215,7 @@ def electron_from_helium(z):
 
 def tau_calculator(x):
     """Calculate the Thomson optical depth from the galaxy reionization parameters."""
-    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     #Initiate f_esc object
     f_esc = f_esc_funct(f_esc_flag, f_esc_params)
@@ -219,7 +227,7 @@ def tau_calculator(x):
         hub = hubble(z, ommh2)
         trec = t_recomb(z, c_hii)
         nh = comov_h_density(ombh2)
-        ion = ioniz_emiss(z,m_sf, m_evol, f_esc)
+        ion = ioniz_emiss(z,m_sf, m_evol, f_esc, photon_norm_factor)
 
         return -1.0*(1.0/hub/(1.0+z))*(ion/nh/(1.0+z)**3.0 - Q/trec)
 
@@ -266,6 +274,13 @@ def tau_calculator(x):
     #Calculate \tau
     (tau, dtau) = quad(tau_integrand, 0.0, z0)
 
+    #DEBUG
+    #print "This is tau of z from here"
+    #for z1 in np.linspace(0.0,25.0,20):
+    #    (tau, dtau) = quad(tau_integrand, 0.0, z1)
+
+    #    print z1, tau
+
     if dtau > 1e-4:
         raise Exception('tau integrator has large error.')
 
@@ -273,7 +288,7 @@ def tau_calculator(x):
 
 
 def logprior(x):
-    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     bad = False
     const = 1.0  #Unnormalized prior
@@ -306,13 +321,16 @@ def logprior(x):
     if m_evol <-0.4 or m_evol>-0.30:
         bad = True
 
+    if photon_norm_factor <24.0 or photon_norm_factor>26.0:
+        bad = True
+
     if bad:
         return -np.inf, False
     else:
         return const, True
 
 def loglike(tau,x):
-    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     if data_type=="tau_only":
 
@@ -366,7 +384,7 @@ def loglike(tau,x):
 
 def logpost(x):
 
-    f_esc_params, c_hii, m_sf, m_evol, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     prior, success = logprior(x)
     if not success:
