@@ -8,17 +8,14 @@ import pandas as pd
 import mpmath as mpm
 import sys
 
+import tau_parameters as params
 
-#Define the redshift evolution of f_esc
-f_esc_flag ='Power'
-#f_esc_flag ='Polint'
-data_type = "tau_only"
-#data_type = "marg_cosmo"
 
-#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
-directory = '/home/laynep/reion_importance/'
-schecter_fname = 'schecter_params.txt'
-#schecter_fname = 'schecter_params_Bouwens.txt'
+#Define the redshift evolution of f_esc, etc
+f_esc_flag = params.f_esc_flag
+data_type = params.data_type
+directory = params.directory
+schecter_fname = params.schecter_fname
 
 
 class f_esc_funct():
@@ -27,6 +24,8 @@ class f_esc_funct():
 
         if f_esc_flag == "Power":
             self.f_esc = lambda z: self.f_esc_POWER(z, f_esc_params)
+        elif f_esc_flag == "Linear":
+            self.f_esc = lambda z: self.f_esc_LINEAR(z, f_esc_params)
         elif f_esc_flag == "Tanh":
             self.f_esc = lambda z: self.f_esc_TANH(z, f_esc_params)
         elif f_esc_flag == "Polint":
@@ -39,10 +38,18 @@ class f_esc_funct():
 
 
     def f_esc_POWER(self, z, f_esc):
-        f6 = f_esc[0]
+        f8 = f_esc[0]
         alpha = f_esc[1]
 
-        out = f6*((1.0+z)/7.0)**alpha
+        out = f8*((1.0+z)/9.0)**alpha
+
+        return np.min([np.max([0.0, out]), 1.0])
+
+    def f_esc_LINEAR(self, z, f_esc):
+        f8 = f_esc[0]
+        slope = f_esc[1]
+
+        out = f8 + slope*(z-8.0)
 
         return np.min([np.max([0.0, out]), 1.0])
 
@@ -120,6 +127,8 @@ def unpack(x):
     y = np.array(x)
 
     if f_esc_flag=="Power":
+        offset=2
+    elif f_esc_flag=="Linear":
         offset=2
     elif f_esc_flag=="Polint":
         offset=4
@@ -299,6 +308,11 @@ def logprior(x):
         if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
             bad = True
         elif f_esc_params[1]<0.0 or f_esc_params[1]>4.0:
+            bad = True
+    elif f_esc_flag=='Linear':
+        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+            bad = True
+        elif f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
             bad = True
     elif f_esc_flag=="Polint":
         if any(f_esc_params<0.0) or any(f_esc_params>1.0):

@@ -3,23 +3,24 @@ import tau_calculator as tau
 import emcee
 import numpy as np
 
+import tau_parameters as params
+
 nwalkers = 300
 niterations = 2000
-
 nthreads = 16
 
-save_fname = "chain_power2.dat"
-#save_fname = "chain_polint.dat"
-#save_fname = "chain_polint_margcosmo.dat"
-#save_fname = "chain_margcosmo.dat"
-
-p0_random = False
-p0_file = "chain_power.dat"
+save_fname = params.save_fname
+p0_random = params.p0_random
+p0_file = params.p0_file
 
 if tau.f_esc_flag == "Power":
     ndim = 6
+elif tau.f_esc_flag == "Linear":
+    ndim = 6
 elif tau.f_esc_flag == "Polint":
     ndim = 8
+else:
+    raise Exception('This f_esc_flag not supported')
 
 if tau.data_type == "marg_cosmo":
     ndim += 2
@@ -40,12 +41,12 @@ if p0_random:
         p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
         p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
         p0_here.append(np.random.rand()*(26.0 - 24.0) + 24.0) #Photon norm
-    
+
         if tau.data_type == "marg_cosmo":
             p0_here.append(np.random.normal(tau.globe.ombh2,tau.globe.ombh2*0.01)) #ombh2
-    
+
             p0_here.append(np.random.normal(tau.globe.ommh2,tau.globe.ommh2*0.01)) #ommh2
-    
+
         p0.append(p0_here)
     p0=np.array(p0)
 else:
