@@ -15,8 +15,10 @@ f_esc_flag ='Power'
 data_type = "tau_only"
 #data_type = "marg_cosmo"
 
-directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
-#directory = '/home/laynep/reion_importance/'
+#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+directory = '/home/laynep/reion_importance/'
+schecter_fname = 'schecter_params.txt'
+#schecter_fname = 'schecter_params_Bouwens.txt'
 
 
 class f_esc_funct():
@@ -77,8 +79,7 @@ class global_params():
         self.X_h = 0.747
         self.HeII_z = 3.0
 
-        #self.schecter_fname = directory + 'schecter_params.txt'
-        self.schecter_fname = directory + 'schecter_params_Bouwens.txt'
+        self.schecter_fname = directory + schecter_fname
         schecter = np.loadtxt(self.schecter_fname)
         self.z_list = schecter[:,0]
         self.phi_list = schecter[:,1]

@@ -8,12 +8,13 @@ niterations = 2000
 
 nthreads = 16
 
+save_fname = "chain_power2.dat"
 #save_fname = "chain_polint.dat"
 #save_fname = "chain_polint_margcosmo.dat"
-save_fname = "chain_margcosmo.dat"
+#save_fname = "chain_margcosmo.dat"
 
-p0_random = True
-p0_file = "chain.dat"
+p0_random = False
+p0_file = "chain_power.dat"
 
 if tau.f_esc_flag == "Power":
     ndim = 6
