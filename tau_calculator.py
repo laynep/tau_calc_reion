@@ -17,6 +17,9 @@ data_type = params.data_type
 directory = params.directory
 schecter_fname = params.schecter_fname
 
+#All nuisance params
+nuis_global = ['C_HII','M_SF','xi_ion','dMdz']
+
 
 class f_esc_funct():
 
@@ -138,10 +141,23 @@ def unpack(x):
         raise Exception('This f_esc_flag not supported.')
 
     f_esc_params = x[0:offset]
-    c_hii = x[offset]
-    m_sf = x[offset+1]
-    m_evol = x[offset+2]
-    photon_norm_factor = x[offset+3]
+
+    if 'C_HII' in params.nuisance:
+        c_hii = x[offset]
+    else:
+        c_hii = 3.0
+    if 'M_SF' in params.nuisance:
+        m_sf = x[offset+1]
+    else:
+        m_sf = -10.0
+    if 'dMdz' in params.nuisance:
+        m_evol = x[offset+2]
+    else:
+        m_evol = -0.35
+    if 'xi_ion' in params.nuisance:
+        photon_norm_factor = x[offset+3]
+    else:
+        photon_norm_factor = 25.2
 
     if data_type == "tau_only":
         #Can get these either from x or from fixed
@@ -229,7 +245,6 @@ def tau_calculator(x):
 
     #Initiate f_esc object
     f_esc = f_esc_funct(f_esc_flag, f_esc_params)
-
 
     def derivs(z, Q):
         """The Q'(z0) = derivs(z, Q)"""
@@ -346,6 +361,13 @@ def logprior(x):
 
 def loglike(tau,x):
     f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
+
+    #Testing here
+    #Initiate f_esc object
+    f_esc = f_esc_funct(f_esc_flag, f_esc_params)
+    if f_esc.f_esc(3.3)>0.15:
+        print "Implementing 3\sigma constraint from Boutsia et al 2011"
+        return -np.inf
 
     if data_type=="tau_only":
 

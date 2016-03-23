@@ -13,34 +13,31 @@ save_fname = params.save_fname
 p0_random = params.p0_random
 p0_file = params.p0_file
 
-if tau.f_esc_flag == "Power":
-    ndim = 6
-elif tau.f_esc_flag == "Linear":
-    ndim = 6
-elif tau.f_esc_flag == "Polint":
-    ndim = 8
-else:
-    raise Exception('This f_esc_flag not supported')
-
-if tau.data_type == "marg_cosmo":
-    ndim += 2
 
 if p0_random:
     p0=[]
     for walker in xrange(nwalkers):
         p0_here = []
         if tau.f_esc_flag == "Power":
-            p0_here.append(np.random.rand()) #f_6
+            p0_here.append(np.random.rand()) #f_8
             p0_here.append(np.random.rand()*4.0) #\alpha
+        elif tau.f_esc_flag == "Linear":
+            p0_here.append(np.random.rand()) #f_8
+            p0_here.append(np.random.rand()) #slope
         elif tau.f_esc_flag == "Polint":
             p0_here.append(np.random.rand()) #f_3
             p0_here.append(np.random.rand()) #f_6
             p0_here.append(np.random.rand()) #f_9
             p0_here.append(np.random.rand()) #f_12
-        p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII
-        p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
-        p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
-        p0_here.append(np.random.rand()*(26.0 - 24.0) + 24.0) #Photon norm
+
+        if 'C_HII' in params.nuisance:
+            p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII
+        if 'M_SF' in params.nuisance:
+            p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
+        if 'dMdz' in params.nuisance:
+            p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
+        if 'xi_ion' in params.nuisance:
+            p0_here.append(np.random.rand()*(26.0 - 24.0) + 24.0) #Photon norm
 
         if tau.data_type == "marg_cosmo":
             p0_here.append(np.random.normal(tau.globe.ombh2,tau.globe.ombh2*0.01)) #ombh2
@@ -52,6 +49,8 @@ if p0_random:
 else:
     p0 = np.loadtxt(p0_file)
     p0 = p0[-nwalkers:,1:]
+
+ndim = len(p0[0])
 
 sampler = emcee.EnsembleSampler(nwalkers, ndim, tau.logpost, threads=nthreads)
 
