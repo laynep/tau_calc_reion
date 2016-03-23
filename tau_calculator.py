@@ -16,10 +16,7 @@ f_esc_flag = params.f_esc_flag
 data_type = params.data_type
 directory = params.directory
 schecter_fname = params.schecter_fname
-
-#All nuisance params
-nuis_global = ['C_HII','M_SF','xi_ion','dMdz']
-
+data_file = params.data_file
 
 class f_esc_funct():
 
@@ -115,12 +112,18 @@ class global_params():
         #self.ombh2 = 0.045*self.h**2
 
         if data_type == "tau_only":
-            self.tau_post_fname =directory + 'posterior_tauonly.txt'
-            tau_pdf = np.loadtxt(self.tau_post_fname)
+            self.tau_post_fname =directory + data_file
+            try:
+                tau_pdf = np.loadtxt(self.tau_post_fname)
+            except:
+                raise Exception('The data file is not available.')
             self.tau_list = tau_pdf[:,1]
             self.taupdf_list = tau_pdf[:,0]
         elif data_type == "marg_cosmo":
-            self.data_margcosmo = pd.read_csv(directory + 'total_margcosmo.txt')
+            try:
+                self.data_margcosmo = pd.read_csv(directory + data_file)
+            except:
+                raise Exception('The data file is not available.')
 
 
 globe = global_params()
@@ -142,20 +145,26 @@ def unpack(x):
 
     f_esc_params = x[0:offset]
 
+    index = offset
+
     if 'C_HII' in params.nuisance:
-        c_hii = x[offset]
+        c_hii = x[index]
+        index += 1
     else:
         c_hii = 3.0
     if 'M_SF' in params.nuisance:
-        m_sf = x[offset+1]
+        m_sf = x[index]
+        index += 1
     else:
         m_sf = -10.0
     if 'dMdz' in params.nuisance:
-        m_evol = x[offset+2]
+        m_evol = x[index]
+        index += 1
     else:
         m_evol = -0.35
     if 'xi_ion' in params.nuisance:
-        photon_norm_factor = x[offset+3]
+        photon_norm_factor = x[index]
+        index += 1
     else:
         photon_norm_factor = 25.2
 
@@ -164,8 +173,9 @@ def unpack(x):
         ombh2 = globe.ombh2
         ommh2 = globe.ommh2
     elif data_type == "marg_cosmo":
-        ombh2 = x[offset+4]
-        ommh2 = x[offset+5]
+        ombh2 = x[index]
+        index += 1
+        ommh2 = x[index]
     else:
         raise Exception('This data_type not supported.')
 
@@ -362,12 +372,12 @@ def logprior(x):
 def loglike(tau,x):
     f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
-    #Testing here
-    #Initiate f_esc object
-    f_esc = f_esc_funct(f_esc_flag, f_esc_params)
-    if f_esc.f_esc(3.3)>0.15:
-        print "Implementing 3\sigma constraint from Boutsia et al 2011"
-        return -np.inf
+    if params.use_lowfesc_const:
+        #Initiate f_esc object
+        f_esc = f_esc_funct(f_esc_flag, f_esc_params)
+        #Implement 2\sigma constraint from Boutsia et al 2011
+        if f_esc.f_esc(3.3)>0.10:
+            return -np.inf
 
     if data_type=="tau_only":
 
