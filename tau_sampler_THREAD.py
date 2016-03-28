@@ -32,12 +32,8 @@ if p0_random:
 
         if 'C_HII' in params.nuisance:
             p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII
-        if 'M_SF' in params.nuisance:
-            p0_here.append(np.random.rand()*(-9.5+11.0) - 11.0) #M_SF
-        if 'dMdz' in params.nuisance:
-            p0_here.append(np.random.rand()*(-0.30 + 0.4) - 0.4) #M_SF'
         if 'xi_ion' in params.nuisance:
-            p0_here.append(np.random.rand()*(26.0 - 25.0) + 25.0) #Photon norm
+            p0_here.append(np.random.rand()*(26.0 - 24.0) + 24.0) #Photon norm
 
         if tau.data_type == "marg_cosmo":
             p0_here.append(np.random.normal(tau.globe.ombh2,tau.globe.ombh2*0.01)) #ombh2

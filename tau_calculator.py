@@ -74,9 +74,9 @@ class f_esc_funct():
 
 
 #Fixed params
-class global_params():
+class global_params(object):
 
-    def __init__(self):
+    def __init__(self,schecter_fname):
         """Some general set up required."""
 
         self.m_bright = -35.0
@@ -92,6 +92,7 @@ class global_params():
         self.phi_list = schecter[:,1]
         self.m_list = schecter[:,2]
         self.alpha_list = schecter[:,3]
+        self.muv_list = schecter[:,4]
 
         self.mpc_to_cm = 3.086e24
         self.mass_h = 1.674e-24
@@ -126,7 +127,7 @@ class global_params():
                 raise Exception('The data file is not available.')
 
 
-globe = global_params()
+globe = global_params(schecter_fname)
 
 def unpack(x):
 
@@ -152,16 +153,6 @@ def unpack(x):
         index += 1
     else:
         c_hii = 3.0
-    if 'M_SF' in params.nuisance:
-        m_sf = x[index]
-        index += 1
-    else:
-        m_sf = -10.0
-    if 'dMdz' in params.nuisance:
-        m_evol = x[index]
-        index += 1
-    else:
-        m_evol = -0.35
     if 'xi_ion' in params.nuisance:
         photon_norm_factor = x[index]
         index += 1
@@ -179,42 +170,54 @@ def unpack(x):
     else:
         raise Exception('This data_type not supported.')
 
-    return f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2
+    return f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2
 
 def mag_to_lumin(mag):
     """Converts AB magnitude to luminosity."""
     conv_factor = 4.345e20
     return float(conv_factor*10.0**(-mag/2.5))
 
-def schecter_params(z):
-    """Get the Schecter parameters as a function of redshift.  Based on the Scorch I paper."""
+def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
+    """Get the Schecter parameters as a function of redshift from file."""
+
+    logical = type(False)
+    if (type(z_list) == logical):
+        z_list = globe.z_list
+    if (type(phi_list)  == logical):
+        phi_list = globe.phi_list
+    if (type(m_list)  == logical):
+        m_list = globe.m_list
+    if (type(alpha_list)  == logical):
+        alpha_list = globe.alpha_list
+    if (type(muv_list)  == logical):
+        muv_list = globe.muv_list
 
     #Use range limits if z extends beyond the interpolation list
-    if z<np.min(globe.z_list):
-        phi_star, m_star, alpha_star = globe.phi_list[0],globe.m_list[0],globe.alpha_list[0]
+    if z<np.min(z_list):
+        phi_star, m_star, alpha_star, muv_star = phi_list[0],m_list[0],alpha_list[0],muv_list[0]
     elif z>np.max(globe.z_list):
-        phi_star, m_star, alpha_star = globe.phi_list[-1], globe.m_list[-1], globe.alpha_list[-1]
+        phi_star, m_star, alpha_star, muv_star = phi_list[-1], m_list[-1], alpha_list[-1],muv_list[-1]
 
     else:
         #Interpolate
-        phi, m, alpha = map(lambda x: interp1d(globe.z_list,x,kind='cubic'),
-                            [globe.phi_list, globe.m_list, globe.alpha_list])
+        phi, m, alpha, muv = map(lambda x: interp1d(z_list,x,kind='cubic'),
+                            [phi_list, m_list, alpha_list, muv_list])
 
-        phi_star, m_star, alpha_star = phi(z), m(z), alpha(z)
+        phi_star, m_star, alpha_star, muv_star = phi(z), m(z), alpha(z), muv(z)
 
     L_star = mag_to_lumin(m_star)
+    L_SF = mag_to_lumin(muv_star)
 
     #Convert phi into cgs --- currently Mpc^-3
     phi_star *= globe.mpc_to_cm**(-3.0)
 
-    return float(phi_star), float(L_star), float(alpha_star)
+    return float(phi_star), float(L_star), float(alpha_star), float(L_SF)
 
-def ioniz_emiss(z, m_sf, m_evol, f_esc, photon_norm_factor):
-    m_faint = m_sf + m_evol*(z-6.0)
+def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
+
     L_bright = mag_to_lumin(globe.m_bright)
-    L_faint = mag_to_lumin(m_faint)
 
-    phi_star, L_star, alpha = schecter_params(z)
+    phi_star, L_star, alpha, L_faint = schecter_params(z,z_list,phi_list,m_list,alpha_list,muv_list)
 
     prefactor = -2.5/np.log(10.0)
     prefactor *= 10.0**(photon_norm_factor)
@@ -251,7 +254,7 @@ def electron_from_helium(z):
 
 def tau_calculator(x):
     """Calculate the Thomson optical depth from the galaxy reionization parameters."""
-    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     #Initiate f_esc object
     f_esc = f_esc_funct(f_esc_flag, f_esc_params)
@@ -262,7 +265,7 @@ def tau_calculator(x):
         hub = hubble(z, ommh2)
         trec = t_recomb(z, c_hii)
         nh = comov_h_density(ombh2)
-        ion = ioniz_emiss(z,m_sf, m_evol, f_esc, photon_norm_factor)
+        ion = ioniz_emiss(z, f_esc, photon_norm_factor)
 
         return -1.0*(1.0/hub/(1.0+z))*(ion/nh/(1.0+z)**3.0 - Q/trec)
 
@@ -323,7 +326,7 @@ def tau_calculator(x):
 
 
 def logprior(x):
-    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     bad = False
     const = 1.0  #Unnormalized prior
@@ -356,10 +359,6 @@ def logprior(x):
 
     if c_hii<1.0 or c_hii>5.0:
         bad = True
-    if m_sf<-11.0 or m_sf >-9.5:
-        bad = True
-    if m_evol <-0.4 or m_evol>-0.30:
-        bad = True
 
     if photon_norm_factor <24.0 or photon_norm_factor>26.0:
         bad = True
@@ -370,7 +369,7 @@ def logprior(x):
         return const, True
 
 def loglike(tau,x):
-    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     if params.use_lowfesc_const:
         #Initiate f_esc object
@@ -431,7 +430,7 @@ def loglike(tau,x):
 
 def logpost(x):
 
-    f_esc_params, c_hii, m_sf, m_evol, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
     prior, success = logprior(x)
     if not success:
