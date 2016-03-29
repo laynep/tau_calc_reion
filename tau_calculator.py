@@ -10,7 +10,6 @@ import sys
 
 import tau_parameters as params
 
-
 #Define the redshift evolution of f_esc, etc
 f_esc_flag = params.f_esc_flag
 data_type = params.data_type
@@ -120,11 +119,44 @@ class global_params(object):
                 raise Exception('The data file is not available.')
             self.tau_list = tau_pdf[:,1]
             self.taupdf_list = tau_pdf[:,0]
+
+            #Likelihood just from the LCDM tau values with cosmo params fixed
+            globe.post_funct = interp1d(globe.tau_list, globe.taupdf_list,kind='cubic')
+
         elif data_type == "marg_cosmo":
             try:
                 self.data_margcosmo = pd.read_csv(directory + data_file)
             except:
                 raise Exception('The data file is not available.')
+
+            #Weighted 3D histogram normed to the posterior value
+            #nbins=int(np.sqrt(len(data_margcosmo))**(1.0/3.0))
+            nbins=15
+            hist, bins = np.histogramdd(
+                    np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                    bins=nbins,
+                    normed=True,
+                    weights=np.array(self.data_margcosmo['weight']))
+
+            hist = np.array(hist)
+
+            def post_funct(x):
+                """Log-like of posterior."""
+                #ombh2,ommh2,tau = x[0], x[1], x[2]
+
+                loc=[]
+                for index in xrange(len(x)):
+                    pos = np.searchsorted(bins[index],x[index])
+                    if pos <1 or pos == len(bins[index]):
+                        return -np.inf
+                    else:
+                        loc.append(pos)
+
+                loc = [l-1 for l in loc]
+
+                return np.log(hist[loc[0],loc[1],loc[2]])
+
+            self.post_funct = post_funct
 
 
 globe = global_params(schecter_fname)
@@ -367,13 +399,24 @@ def logprior(x):
     else:
         return const, True
 
-def loglike(tau,x):
+def loglike(tau,Q,x):
     f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
 
+    #Non-CMB constraints
+
+    #2sig constraint from 1411.5375 as a step function
+    try:
+        if Q(z=5.9)<0.84:
+            #print "Caught by Q"
+            return -np.inf
+    except:
+        raise TypeError('Q is not callable with real argument.')
+
+    #2\sigma constraint from Boutsia et al 2011
     if params.use_lowfesc_const:
         #Initiate f_esc object
+        #print "Caught by f_esc"
         f_esc = f_esc_funct(f_esc_flag, f_esc_params)
-        #Implement 2\sigma constraint from Boutsia et al 2011
         if f_esc.f_esc(3.3)>0.10:
             return -np.inf
 
@@ -383,11 +426,8 @@ def loglike(tau,x):
             return -np.inf
         else:
 
-            #Likelihood just from the LCDM tau values with cosmo params fixed
-            post_funct = interp1d(globe.tau_list, globe.taupdf_list,kind='cubic')
-
-            #print "This is post_funct", post_funct(tau)
-            post = np.max([0.0,post_funct(tau)])
+            #print "This is post_funct", globe.post_funct(tau)
+            post = np.max([0.0,globe.post_funct(tau)])
 
             if post<=0.0:
                 return -np.inf
@@ -395,6 +435,12 @@ def loglike(tau,x):
                 return np.log(post)
 
     elif data_type == "marg_cosmo":
+
+        #DEBUG
+        #print "This is x:", x
+        #print "ranges:", tau, np.min(globe.data_margcosmo['tau']), np.max(globe.data_margcosmo['tau'])
+        #print "ranges:", ombh2, np.min(globe.data_margcosmo['omegabh2']), np.max(globe.data_margcosmo['omegabh2'])
+        #print "ranges:", ommh2, np.min(globe.data_margcosmo['omegamh2']), np.max(globe.data_margcosmo['omegamh2'])
 
         if tau<np.min(globe.data_margcosmo['tau']) or tau > np.max(globe.data_margcosmo['tau']):
             #print "Caught by tau"
@@ -407,13 +453,7 @@ def loglike(tau,x):
             return -np.inf
         else:
 
-            #Only really feasible to do nearest neighbors interpolation here
-            #Here we assume flat priors in LCDM so that like=post
-            post_funct = NearestNDInterpolator(
-                np.array(globe.data_margcosmo[['omegabh2','omegamh2','tau']]),
-                np.array(globe.data_margcosmo['like']))
-
-            post = np.max([0.0,post_funct([ombh2,ommh2,tau])])
+            post = np.max([0.0,globe.post_funct([ombh2,ommh2,tau])])
 
             #print "this is post:", post
 
@@ -439,13 +479,11 @@ def logpost(x):
 
     tau, Q = tau_calculator(x)
 
+
+    like = loglike(tau, Q, x)
+
     #print "this is tau", tau, Q(5.9)
+    #print "this is loglike", like
 
-    #Implement 2sig constraint from 1411.5375 as a step function
-    if Q(z=5.9)<0.84:
-        like = -np.inf
-
-    else:
-        like = loglike(tau, x)
 
     return prior + like
