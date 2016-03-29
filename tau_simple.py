@@ -3,11 +3,11 @@ import tau_calculator as tau
 import numpy as np
 
 x0=[]
-x0.append(0.2) #f_6
-x0.append(0.0) #\alpha
-x0.append(3.0) #C_HII
-x0.append(-10.0) #M_SF
-x0.append(-0.35) #M_SF'
+x0.append(3.73604206e-01)
+x0.append(2.13735353e+00)
+x0.append(2.59957181e+01)
+x0.append(2.11533863e-02)
+x0.append(1.40088349e-01)
 x0=np.array(x0)
 
 tau0= tau.tau_calculator(x0)
