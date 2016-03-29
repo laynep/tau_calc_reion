@@ -289,7 +289,13 @@ def tau_calculator(x):
 
 
     #Set up interpolating function
-    naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='cubic')
+    if len(z_ode) > 3 and len(Q_ode)>3:
+        naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='cubic')
+    elif len(z_ode)>=2 and len(Q_ode)>=2:
+        naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='linear')
+    else:
+        raise Exception('The Q integrator took only one step.')
+
     def Q_of_z(z):
         #Volume filling factor
         if z<np.min(z_ode):
@@ -311,13 +317,6 @@ def tau_calculator(x):
 
     #Calculate \tau
     (tau, dtau) = quad(tau_integrand, 0.0, z0)
-
-    #DEBUG
-    #print "This is tau of z from here"
-    #for z1 in np.linspace(0.0,25.0,20):
-    #    (tau, dtau) = quad(tau_integrand, 0.0, z1)
-
-    #    print z1, tau
 
     if dtau > 1e-4:
         raise Exception('tau integrator has large error.')
@@ -398,13 +397,13 @@ def loglike(tau,x):
     elif data_type == "marg_cosmo":
 
         if tau<np.min(globe.data_margcosmo['tau']) or tau > np.max(globe.data_margcosmo['tau']):
-            print "Caught by tau"
+            #print "Caught by tau"
             return -np.inf
         elif ombh2<np.min(globe.data_margcosmo['omegabh2']) or ombh2 > np.max(globe.data_margcosmo['omegabh2']):
-            print "Caught by ombh2"
+            #print "Caught by ombh2"
             return -np.inf
         elif ommh2<np.min(globe.data_margcosmo['omegamh2']) or ommh2 > np.max(globe.data_margcosmo['omegamh2']):
-            print "Caught by ommh2"
+            #print "Caught by ommh2"
             return -np.inf
         else:
 
