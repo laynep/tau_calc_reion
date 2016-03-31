@@ -132,11 +132,20 @@ class global_params(object):
             #Weighted 3D histogram normed to the posterior value
             #nbins=int(np.sqrt(len(data_margcosmo))**(1.0/3.0))
             nbins=15
-            hist, bins = np.histogramdd(
-                    np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
-                    bins=nbins,
-                    normed=True,
-                    weights=np.array(self.data_margcosmo['weight']))
+            try:
+                hist, bins = np.histogramdd(
+                        np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                        bins=nbins,
+                        normed=True,
+                        weights=np.array(self.data_margcosmo['weight']))
+            except:
+                try:
+                    hist, bins = np.histogramdd(
+                            np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                            bins=nbins,
+                            normed=True)
+                except:
+                    raise Exception('Could not build density estimator.')
 
             hist = np.array(hist)
 

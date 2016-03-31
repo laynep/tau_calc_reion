@@ -1,9 +1,20 @@
-#Emcee sampler
+"""Emcee sampler for importance sampling tau with pre-defined galaxy luminosity function parameters."""
 import tau_calculator as tau
 import emcee
 import numpy as np
 
-import tau_parameters as params
+import importlib
+
+#Get params file from command line
+import sys
+sys.path.append('./parameters/')
+cline_args = sys.argv
+modname = str(sys.argv[1]).strip()
+if modname[-3:]==".py":
+    modname=modname[:-3]
+
+params = importlib.import_module(modname)
+
 
 nwalkers = 300
 niterations = 2000
