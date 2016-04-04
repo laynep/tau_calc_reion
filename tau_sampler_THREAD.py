@@ -36,6 +36,7 @@ if p0_random:
             p0_here.append(np.random.rand()) #f_8
             p0_here.append(np.random.rand()) #slope
         elif tau.f_esc_flag == "Polint":
+
             p0_here.append(np.random.rand()) #f_3
             p0_here.append(np.random.rand()) #f_6
             p0_here.append(np.random.rand()) #f_9

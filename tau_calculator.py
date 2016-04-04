@@ -8,7 +8,16 @@ import pandas as pd
 import mpmath as mpm
 import sys
 
-import tau_parameters as params
+#Get params file from command line
+import importlib
+import sys
+sys.path.append('./parameters/')
+cline_args = sys.argv
+modname = str(sys.argv[1]).strip()
+if modname[-3:]==".py":
+    modname=modname[:-3]
+
+params = importlib.import_module(modname)
 
 #Define the redshift evolution of f_esc, etc
 f_esc_flag = params.f_esc_flag
