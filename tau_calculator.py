@@ -16,6 +16,8 @@ cline_args = sys.argv
 modname = str(sys.argv[1]).strip()
 if modname[-3:]==".py":
     modname=modname[:-3]
+elif modname[-4:]==".pyc":
+    modname=modname[:-4]
 
 params = importlib.import_module(modname)
 
@@ -29,6 +31,8 @@ data_file = params.data_file
 class f_esc_funct():
 
     def __init__(self,f_esc_flag, f_esc_params):
+
+        self.params = f_esc_params
 
         if f_esc_flag == "Power":
             self.f_esc = lambda z: self.f_esc_POWER(z, f_esc_params)
@@ -183,20 +187,29 @@ def unpack(x):
 
     y = np.array(x)
 
-    if f_esc_flag=="Power":
-        offset=2
-    elif f_esc_flag=="Linear":
-        offset=2
-    elif f_esc_flag=="Polint":
-        offset=4
-    elif f_esc_flag=="Tanh":
-        offset=4
+    index = 0
+
+    if params.ion_model=="Standard":
+
+        if f_esc_flag=="Power":
+            index+=2
+        elif f_esc_flag=="Linear":
+            index+=2
+        elif f_esc_flag=="Polint":
+            index+=4
+        elif f_esc_flag=="Tanh":
+            index+=4
+        else:
+            raise Exception('This f_esc_flag not supported.')
+
+    elif params.ion_model=="Nonparametric":
+
+        index +=4
+
     else:
-        raise Exception('This f_esc_flag not supported.')
+        raise Exception('This ion model not supported.')
 
-    f_esc_params = x[0:offset]
-
-    index = offset
+    f_esc_params = x[0:index]
 
     if 'C_HII' in params.nuisance:
         c_hii = x[index]
@@ -265,19 +278,37 @@ def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,
 
 def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
 
-    L_bright = mag_to_lumin(globe.m_bright)
+    if params.ion_model=="Nonparametric":
+        #This overrides the f_esc params and uses them directly as knot-spline approach for the ionizing emissitivity.
 
-    phi_star, L_star, alpha, L_faint = schecter_params(z,z_list,phi_list,m_list,alpha_list,muv_list)
+        if z<3.0:
+            return f_esc.params[0]
+        elif z >12.0:
+            return f_esc.params[-1]
+        else:
+            #I know it's bad to interpolate at every step.  Sue me.
+            z_list = np.linspace(3.0,12.0,4)
+            n_gamma = interp1d(z_list,f_esc.params,kind='cubic')
+            return np.max([0.0,n_gamma(z)])
 
-    prefactor = -2.5/np.log(10.0)
-    prefactor *= 10.0**(photon_norm_factor)
-    prefactor *= f_esc.f_esc(z)*phi_star*L_star
+    elif params.ion_model=="Standard":
 
-    if alpha<-2.0:
-        #Close approximation
-        return prefactor*(alpha+1.0)**(-1.0)*(L_faint/L_star)**(alpha+1.0)
+        L_bright = mag_to_lumin(globe.m_bright)
+
+        phi_star, L_star, alpha, L_faint = schecter_params(z,z_list,phi_list,m_list,alpha_list,muv_list)
+
+        prefactor = -2.5/np.log(10.0)
+        prefactor *= 10.0**(photon_norm_factor)
+        prefactor *= f_esc.f_esc(z)*phi_star*L_star
+
+        if alpha<-2.0:
+            #Close approximation
+            return prefactor*(alpha+1.0)**(-1.0)*(L_faint/L_star)**(alpha+1.0)
+        else:
+            return prefactor*(mpm.gammainc(1.0+alpha,L_bright/L_star) - mpm.gammainc(1.0+alpha,L_faint/L_star))
+
     else:
-        return prefactor*(mpm.gammainc(1.0+alpha,L_bright/L_star) - mpm.gammainc(1.0+alpha,L_faint/L_star))
+        raise Exception('This model for the ionizing emissitivity is not implemented.')
 
 def t_recomb(z, c_hii):
     prefactor = 0.93*1e9*365.25*24.0*60.0*60.0 #Gyr to sec
@@ -344,6 +375,8 @@ def tau_calculator(x):
     elif len(z_ode)>=2 and len(Q_ode)>=2:
         naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='linear')
     else:
+        print "z_ode", z_ode
+        print "Q_ode", Q_ode
         raise Exception('The Q integrator took only one step.')
 
     def Q_of_z(z):
@@ -381,30 +414,39 @@ def logprior(x):
     const = 1.0  #Unnormalized prior
 
     #Prior ranges
-    if f_esc_flag=='Power':
-        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+    if params.ion_model=="Standard":
+        if f_esc_flag=='Power':
+            if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+                bad = True
+            elif f_esc_params[1]<0.0 or f_esc_params[1]>4.0:
+                bad = True
+        elif f_esc_flag=='Linear':
+            if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+                bad = True
+            elif f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
+                bad = True
+        elif f_esc_flag=="Polint":
+            if any(f_esc_params<0.0) or any(f_esc_params>1.0):
+                bad = True
+        elif f_esc_flag == "Tanh":
+            if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
+                bad = True
+            if f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
+                bad = True
+            if f_esc_params[2]<0.01 or f_esc_params[2]>1.0:
+                bad = True
+            if f_esc_params[3]<0.0 or f_esc_params[3]>25.0:
+                bad = True
+        else:
+            raise Exception('This f_esc_flag not implemented')
+
+    elif params.ion_model=="Nonparametric":
+
+        if any(f_esc_params<0.0):
             bad = True
-        elif f_esc_params[1]<0.0 or f_esc_params[1]>4.0:
-            bad = True
-    elif f_esc_flag=='Linear':
-        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
-            bad = True
-        elif f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
-            bad = True
-    elif f_esc_flag=="Polint":
-        if any(f_esc_params<0.0) or any(f_esc_params>1.0):
-            bad = True
-    elif f_esc_flag == "Tanh":
-        if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
-            bad = True
-        if f_esc_params[1]<0.0 or f_esc_params[1]>1.0:
-            bad = True
-        if f_esc_params[2]<0.01 or f_esc_params[2]>1.0:
-            bad = True
-        if f_esc_params[3]<0.0 or f_esc_params[3]>25.0:
-            bad = True
+
     else:
-        raise Exception('This f_esc_flag not implemented')
+        raise Exception('This ion model not implemented.')
 
     if c_hii<1.0 or c_hii>5.0:
         bad = True

@@ -29,18 +29,31 @@ if p0_random:
     p0=[]
     for walker in xrange(nwalkers):
         p0_here = []
-        if tau.f_esc_flag == "Power":
-            p0_here.append(np.random.rand()) #f_8
-            p0_here.append(np.random.rand()*4.0) #\alpha
-        elif tau.f_esc_flag == "Linear":
-            p0_here.append(np.random.rand()) #f_8
-            p0_here.append(np.random.rand()) #slope
-        elif tau.f_esc_flag == "Polint":
 
-            p0_here.append(np.random.rand()) #f_3
-            p0_here.append(np.random.rand()) #f_6
-            p0_here.append(np.random.rand()) #f_9
-            p0_here.append(np.random.rand()) #f_12
+        if params.ion_model=="Standard":
+
+            if tau.f_esc_flag == "Power":
+                p0_here.append(np.random.rand()) #f_8
+                p0_here.append(np.random.rand()*4.0) #\alpha
+            elif tau.f_esc_flag == "Linear":
+                p0_here.append(np.random.rand()) #f_8
+                p0_here.append(np.random.rand()) #slope
+            elif tau.f_esc_flag == "Polint":
+
+                p0_here.append(np.random.rand()) #f_3
+                p0_here.append(np.random.rand()) #f_6
+                p0_here.append(np.random.rand()) #f_9
+                p0_here.append(np.random.rand()) #f_12
+
+        elif params.ion_model=="Nonparametric":
+
+            p0_here.append(np.random.rand()*1e-19) #emiss_3
+            p0_here.append(np.random.rand()*1e-19) #emiss_6
+            p0_here.append(np.random.rand()*1e-19) #emiss_9
+            p0_here.append(np.random.rand()*1e-19) #emiss_12
+
+        else:
+            raise Exception('This ion model not implemented.')
 
         if 'C_HII' in params.nuisance:
             p0_here.append(np.random.rand()*(5.0-1.0)+1.0) #C_HII

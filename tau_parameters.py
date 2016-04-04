@@ -22,8 +22,8 @@ nuisance = ['C_HII','xi_ion']
 #nuisance = ['xi_ion']
 
 #Where the main reionization directory is
-#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
-directory = '/home/laynep/reion_importance/'
+directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+#directory = '/home/laynep/reion_importance/'
 
 #Which set of Schecter params to use for the GLF
 #schecter_fname = 'schecter_params/schecter_params.txt'
@@ -37,3 +37,7 @@ save_fname = "chain_power_lensing_BAO.dat"
 #Use random ICs for chains or load from file
 p0_random = True
 p0_file = "chain_power.dat"
+
+#Model for the ionizing emissitivity
+ion_model = "Nonparametric"
+#ion_model = "Standard"

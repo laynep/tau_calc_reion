@@ -27,18 +27,17 @@ directory = '/home/laynep/reion_importance/'
 
 #Which set of Schecter params to use for the GLF
 #schecter_fname = 'schecter_params/schecter_params.txt'
+#schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
 #schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.80.txt'
-#
-schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
-#schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
+schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
-save_fname = "chain_power_lensing_BAO_Bouwens.dat"
+save_fname = "chain_ngamma_lensing_BAO.dat"
 
 #Use random ICs for chains or load from file
 p0_random = True
 p0_file = "chain_power.dat"
 
 #Model for the ionizing emissitivity
-#ion_model = "Nonparametric"
-ion_model = "Standard"
+ion_model = "Nonparametric"
+#ion_model = "Standard"

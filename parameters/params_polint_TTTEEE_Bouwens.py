@@ -37,3 +37,7 @@ save_fname = "chain_polint_TTTEEE_Bouwens.dat"
 #Use random ICs for chains or load from file
 p0_random = True
 p0_file = "chain_power.dat"
+
+#Model for the ionizing emissitivity
+#ion_model = "Nonparametric"
+ion_model = "Standard"
