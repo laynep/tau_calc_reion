@@ -473,12 +473,13 @@ def loglike(tau,Q,x):
         raise TypeError('Q is not callable with real argument.')
 
     #2\sigma constraint from Boutsia et al 2011
-    if params.use_lowfesc_const:
-        #Initiate f_esc object
-        #print "Caught by f_esc"
-        f_esc = f_esc_funct(f_esc_flag, f_esc_params)
-        if f_esc.f_esc(3.3)>0.10:
-            return -np.inf
+    if params.ion_model=="Standard":
+        if params.use_lowfesc_const:
+            #Initiate f_esc object
+            f_esc = f_esc_funct(f_esc_flag, f_esc_params)
+            if any(map(lambda z: f_esc.f_esc(z)>0.10,np.linspace(0.0,3.3,10))):
+                #print "Caught by f_esc"
+                return -np.inf
 
     if data_type=="tau_only":
 

@@ -1,8 +1,8 @@
 #Parameters file
 
 #Define f_esc parameters
-f_esc_flag ='Power'
-#f_esc_flag ='Polint'
+#f_esc_flag ='Power'
+f_esc_flag ='Polint'
 #f_esc_flag ='Linear'
 
 #Define the data type
@@ -39,5 +39,5 @@ p0_random = True
 p0_file = "chain_power.dat"
 
 #Model for the ionizing emissitivity
-ion_model = "Nonparametric"
-#ion_model = "Standard"
+#ion_model = "Nonparametric"
+ion_model = "Standard"
