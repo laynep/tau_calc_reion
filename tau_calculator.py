@@ -204,7 +204,7 @@ def unpack(x):
 
     elif params.ion_model=="Nonparametric":
 
-        index +=4
+        index +=5
 
     else:
         raise Exception('This ion model not supported.')
@@ -283,11 +283,11 @@ def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=
 
         if z<3.0:
             return f_esc.params[0]
-        elif z >12.0:
+        elif z >15.0:
             return f_esc.params[-1]
         else:
             #I know it's bad to interpolate at every step.  Sue me.
-            z_list = np.linspace(3.0,12.0,4)
+            z_list = np.linspace(3.0,15.0,5)
             n_gamma = interp1d(z_list,f_esc.params,kind='cubic')
             return np.max([0.0,n_gamma(z)])
 
@@ -355,7 +355,12 @@ def tau_calculator(x):
 
     #ICs
     Q0 = 2.1979099400481504e-004 #From CAMB, connects to residual ionization from recombination
-    z0= 25.0
+    if params.ion_model=="Standard":
+        z0= 25.0
+    elif params.ion_model=="Nonparametric":
+        z0= 15.0
+    else:
+        raise Exception('This ion model not supported.')
     solver.set_initial_value(Q0,z0)
 
     nsteps = 100.0
@@ -464,7 +469,7 @@ def loglike(tau,Q,x):
 
     #Non-CMB constraints
 
-    #2sig constraint from 1411.5375 as a step function
+    #2sig constraint from McGreer+, 1411.5375 as a step function
     try:
         if Q(z=5.9)<0.84:
             #print "Caught by Q"

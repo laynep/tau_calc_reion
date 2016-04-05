@@ -51,6 +51,7 @@ if p0_random:
             p0_here.append(np.random.rand()*1e-19) #emiss_6
             p0_here.append(np.random.rand()*1e-19) #emiss_9
             p0_here.append(np.random.rand()*1e-19) #emiss_12
+            p0_here.append(np.random.rand()*1e-19) #emiss_15
 
         else:
             raise Exception('This ion model not implemented.')

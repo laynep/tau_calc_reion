@@ -1,8 +1,8 @@
 #Parameters file
 
 #Define f_esc parameters
-#f_esc_flag ='Power'
-f_esc_flag ='Polint'
+f_esc_flag ='Power'
+#f_esc_flag ='Polint'
 #f_esc_flag ='Linear'
 
 #Define the data type
@@ -27,9 +27,9 @@ directory = '/Users/laynep/work/reionization/importance_sampler/python_implement
 
 #Which set of Schecter params to use for the GLF
 #schecter_fname = 'schecter_params/schecter_params.txt'
-#schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
+schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
 #schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.80.txt'
-schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
+#schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
 save_fname = "chain_power_lensing_BAO.dat"
