@@ -15,11 +15,11 @@ data_file = 'data/total_TTTEEE_lowTEB.csv'
 #data_file = 'data/total_margcosmo.txt'
 #data_file = 'data/posterior_tauonly.txt'
 
-use_lowfesc_const = True
+use_lowfesc_const = False
 
 #Nuisance params
-nuisance = ['C_HII','xi_ion']
-#nuisance = ['xi_ion']
+#nuisance = ['C_HII','xi_ion']
+nuisance = ['C_HII']
 
 #Where the main reionization directory is
 #directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'

@@ -32,7 +32,7 @@ schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
 #schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
-save_fname = "chain_polint_TTTEEE_Bouwens.dat"
+save_fname = "chain_polint_TTTEEE_Bouwens_2.dat"
 
 #Use random ICs for chains or load from file
 p0_random = True
