@@ -124,61 +124,95 @@ class global_params(object):
         #self.ommh2 = 0.3*self.h**2
         #self.ombh2 = 0.045*self.h**2
 
+        try:
+            self.data = pd.read_csv(directory + data_file)
+        except:
+            raise Exception('The data file is not available.')
+
         if data_type == "tau_only":
-            self.tau_post_fname =directory + data_file
-            try:
-                tau_pdf = np.loadtxt(self.tau_post_fname)
-            except:
-                raise Exception('The data file is not available.')
-            self.tau_list = tau_pdf[:,1]
-            self.taupdf_list = tau_pdf[:,0]
-
-            #Likelihood just from the LCDM tau values with cosmo params fixed
-            globe.post_funct = interp1d(globe.tau_list, globe.taupdf_list,kind='cubic')
-
-        elif data_type == "marg_cosmo":
-            try:
-                self.data_margcosmo = pd.read_csv(directory + data_file)
-            except:
-                raise Exception('The data file is not available.')
 
             #Weighted 3D histogram normed to the posterior value
-            #nbins=int(np.sqrt(len(data_margcosmo))**(1.0/3.0))
-            nbins=15
+            nbins=25
             try:
                 hist, bins = np.histogramdd(
-                        np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                        np.array(self.data['tau']),
                         bins=nbins,
                         normed=True,
-                        weights=np.array(self.data_margcosmo['weight']))
+                        weights=np.array(self.data['weight']))
             except:
                 try:
                     hist, bins = np.histogramdd(
-                            np.array(self.data_margcosmo[['omegabh2','omegamh2','tau']]),
+                            np.array(self.data['tau']),
                             bins=nbins,
                             normed=True)
                 except:
                     raise Exception('Could not build density estimator.')
 
-            hist = np.array(hist)
+        elif data_type == "marg_cosmo":
 
-            def post_funct(x):
-                """Log-like of posterior."""
-                #ombh2,ommh2,tau = x[0], x[1], x[2]
+            #Weighted 3D histogram normed to the posterior value
+            nbins=15
+            try:
+                hist, bins = np.histogramdd(
+                        np.array(self.data[['omegabh2','omegamh2','tau']]),
+                        bins=nbins,
+                        normed=True,
+                        weights=np.array(self.data['weight']))
+            except:
+                try:
+                    hist, bins = np.histogramdd(
+                            np.array(self.data[['omegabh2','omegamh2','tau']]),
+                            bins=nbins,
+                            normed=True)
+                except:
+                    raise Exception('Could not build density estimator.')
 
-                loc=[]
-                for index in xrange(len(x)):
-                    pos = np.searchsorted(bins[index],x[index])
-                    if pos <1 or pos == len(bins[index]):
-                        return -np.inf
-                    else:
-                        loc.append(pos)
+        else:
+            raise Exception('This data type not supported.')
 
-                loc = [l-1 for l in loc]
+        hist = np.array(hist)
 
-                return np.log(hist[loc[0],loc[1],loc[2]])
+        def post_funct(x):
+            """Log-like of posterior."""
+            #ombh2,ommh2,tau = x[0], x[1], x[2] marg_cosmo
+            #tau = x[0] tau_only
 
-            self.post_funct = post_funct
+            loc=[]
+            for index in xrange(len(x)):
+                pos = np.searchsorted(bins[index],x[index])
+                if pos <1 or pos == len(bins[index]):
+                    return -np.inf
+                else:
+                    loc.append(pos)
+
+            loc = [l-1 for l in loc]
+
+            if data_type == "tau_only":
+                post = hist[loc[0]]
+            elif data_type == "marg_cosmo":
+                post= hist[loc[0],loc[1],loc[2]]
+
+            if post<=0.0:
+                return -np.inf
+            else:
+                return np.log(post)
+
+        self.post_funct = post_funct
+
+        #DEBUG
+        #if data_type == "marg_cosmo":
+        #    print "This is post funct", post_funct([0.0224,0.144,0.040])
+        #    print "This is post funct", post_funct([0.0224,0.144,0.050])
+        #    print "This is post funct", post_funct([0.0224,0.144,0.066])
+        #    print "This is post funct", post_funct([0.0224,0.144,0.079])
+        #    print "This is post funct", post_funct([0.0224,0.144,0.09])
+        #else:
+        #    print "This is post funct", post_funct([0.040])
+        #    print "This is post funct", post_funct([0.050])
+        #    print "This is post funct", post_funct([0.066])
+        #    print "This is post funct", post_funct([0.079])
+        #    print "This is post funct", post_funct([0.09])
+        #sys.exit()
 
 
 globe = global_params(schecter_fname)
@@ -488,33 +522,27 @@ def loglike(tau,Q,x):
 
     if data_type=="tau_only":
 
-        if tau<np.min(globe.tau_list) or tau > np.max(globe.tau_list):
+        if tau<np.min(globe.data['tau']) or tau > np.max(globe.data['tau']):
+            #print "Caught by tau"
             return -np.inf
+
         else:
 
             #print "This is post_funct", globe.post_funct(tau)
-            post = np.max([0.0,globe.post_funct(tau)])
+            post = np.max([0.0,globe.post_funct([tau])])
 
-            if post<=0.0:
-                return -np.inf
-            else:
-                return np.log(post)
+            return post #Like is already log-like
+            #return np.log(post)
 
     elif data_type == "marg_cosmo":
 
-        #DEBUG
-        #print "This is x:", x
-        #print "ranges:", tau, np.min(globe.data_margcosmo['tau']), np.max(globe.data_margcosmo['tau'])
-        #print "ranges:", ombh2, np.min(globe.data_margcosmo['omegabh2']), np.max(globe.data_margcosmo['omegabh2'])
-        #print "ranges:", ommh2, np.min(globe.data_margcosmo['omegamh2']), np.max(globe.data_margcosmo['omegamh2'])
-
-        if tau<np.min(globe.data_margcosmo['tau']) or tau > np.max(globe.data_margcosmo['tau']):
+        if tau<np.min(globe.data['tau']) or tau > np.max(globe.data['tau']):
             #print "Caught by tau"
             return -np.inf
-        elif ombh2<np.min(globe.data_margcosmo['omegabh2']) or ombh2 > np.max(globe.data_margcosmo['omegabh2']):
+        elif ombh2<np.min(globe.data['omegabh2']) or ombh2 > np.max(globe.data['omegabh2']):
             #print "Caught by ombh2"
             return -np.inf
-        elif ommh2<np.min(globe.data_margcosmo['omegamh2']) or ommh2 > np.max(globe.data_margcosmo['omegamh2']):
+        elif ommh2<np.min(globe.data['omegamh2']) or ommh2 > np.max(globe.data['omegamh2']):
             #print "Caught by ommh2"
             return -np.inf
         else:
@@ -523,11 +551,8 @@ def loglike(tau,Q,x):
 
             #print "this is post:", post
 
-            if post<=0.0:
-                return -np.inf
-            else:
-                #return np.log(post)
-                return post #Like is already log-like
+            #return np.log(post)
+            return post #Like is already log-like
 
     else:
         raise Exception('This data type not supported.')
