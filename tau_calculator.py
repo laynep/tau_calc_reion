@@ -524,13 +524,12 @@ def loglike(tau,Q,x):
     if data_type=="tau_only":
 
         if tau<np.min(globe.data['tau']) or tau > np.max(globe.data['tau']):
-            #print "Caught by tau"
             return -np.inf
 
         else:
 
             #print "This is post_funct", globe.post_funct(tau)
-            post = np.max([0.0,globe.post_funct([tau])])
+            post = globe.post_funct([tau])
 
             return post #Like is already log-like
             #return np.log(post)
@@ -548,7 +547,7 @@ def loglike(tau,Q,x):
             return -np.inf
         else:
 
-            post = np.max([0.0,globe.post_funct([ombh2,ommh2,tau])])
+            post = globe.post_funct([ombh2,ommh2,tau])
 
             #print "this is post:", post
 

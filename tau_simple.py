@@ -3,8 +3,13 @@ import tau_calculator as tau
 import numpy as np
 
 x0=[]
-x0.append(2e-1)
-x0.append(0.0)
+#x0.append(2e-1)
+#x0.append(0.0)
+x0.append(1e-10)
+x0.append(1e-10)
+x0.append(1e-10)
+x0.append(1e-10)
+x0.append(1e-10)
 x0.append(3.0)
 x0.append(25.2)
 x0.append(0.022)
@@ -21,10 +26,10 @@ print tau0[0]
 print "This is loglike"
 print tau.loglike(tau0[0],tau0[1],x0)
 
-print "This is n_gamma:"
-for z in np.linspace(0,15,100):
-    f_esc = tau.f_esc_funct("Power", x0[0:2])
-    print z, tau.ioniz_emiss(z, f_esc, x0[3])
+#print "This is n_gamma:"
+#for z in np.linspace(0,15,100):
+#    f_esc = tau.f_esc_funct("Power", x0[0:2])
+#    print z, tau.ioniz_emiss(z, f_esc, x0[3])
 
 
 #print "this is Q"
