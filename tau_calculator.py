@@ -399,8 +399,8 @@ def tau_calculator(x):
 
     nsteps = 100.0
     dz = -z0/nsteps
-    z_ode = []
-    Q_ode = []
+    z_ode = [z0]
+    Q_ode = [Q0]
     while solver.successful() and solver.t > 0.0 and solver.y<1.0 and solver.y>0.0:
         solver.integrate(solver.t + dz)
         z_ode.append(solver.t)
@@ -414,6 +414,7 @@ def tau_calculator(x):
     elif len(z_ode)>=2 and len(Q_ode)>=2:
         naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='linear')
     else:
+        naive_Q = lambda z: Q_ode[0]
         print "z_ode", z_ode
         print "Q_ode", Q_ode
         raise Exception('The Q integrator took only one step.')

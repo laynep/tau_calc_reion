@@ -35,8 +35,8 @@ schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 save_fname = "chain_ngamma_TTTEEE_tauonly.dat"
 
 #Use random ICs for chains or load from file
-p0_random = True
-p0_file = "chain_power.dat"
+p0_random = False
+p0_file = "chain_ngamma_TTTEEE_tauonly.dat"
 
 #Model for the ionizing emissitivity
 ion_model = "Nonparametric"
