@@ -32,12 +32,15 @@ directory = '/home/laynep/reion_importance/'
 schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
-save_fname = "chain_ngamma_TTTEEE_tauonly.dat"
+save_fname = "chain_ngamma_TTTEEE_tauonly2.dat"
 
 #Use random ICs for chains or load from file
-p0_random = False
+p0_random = True
 p0_file = "chain_ngamma_TTTEEE_tauonly.dat"
 
 #Model for the ionizing emissitivity
 ion_model = "Nonparametric"
 #ion_model = "Standard"
+
+#Require f_esc to be monotonically increasing with z for the polint model
+f_esc_monotonic = True

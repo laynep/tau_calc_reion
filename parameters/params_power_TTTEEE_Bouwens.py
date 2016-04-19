@@ -18,8 +18,8 @@ data_file = 'data/total_TTTEEE_lowTEB.csv'
 use_lowfesc_const = True
 
 #Nuisance params
-nuisance = ['C_HII','xi_ion']
-#nuisance = ['xi_ion']
+#nuisance = ['C_HII','xi_ion']
+nuisance = ['C_HII']
 
 #Where the main reionization directory is
 #directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
@@ -36,8 +36,11 @@ save_fname = "chain_power_TTTEEE_Bouwens_tauonly.dat"
 
 #Use random ICs for chains or load from file
 p0_random = True
-p0_file = "chain_power.dat"
+p0_file = "chain_power_TTTEEE_Bouwens_tauonly.dat"
 
 #Model for the ionizing emissitivity
 #ion_model = "Nonparametric"
 ion_model = "Standard"
+
+#Require f_esc to be monotonically increasing with z for the polint model
+f_esc_monotonic = True

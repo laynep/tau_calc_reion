@@ -28,6 +28,7 @@ directory = params.directory
 schecter_fname = params.schecter_fname
 data_file = params.data_file
 
+
 class f_esc_funct():
 
     def __init__(self,f_esc_flag, f_esc_params):
@@ -132,7 +133,7 @@ class global_params(object):
         if data_type == "tau_only":
 
             #Weighted 3D histogram normed to the posterior value
-            nbins=25
+            nbins=40
             try:
                 hist, bins = np.histogramdd(
                         np.array(self.data['tau']),
@@ -214,6 +215,8 @@ class global_params(object):
         #    print "This is post funct", post_funct([0.09])
         #sys.exit()
 
+        self.print_counter = 0
+
 
 globe = global_params(schecter_fname)
 
@@ -238,7 +241,7 @@ def unpack(x):
 
     elif params.ion_model=="Nonparametric":
 
-        index +=5
+        index +=6
 
     else:
         raise Exception('This ion model not supported.')
@@ -315,14 +318,16 @@ def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=
     if params.ion_model=="Nonparametric":
         #This overrides the f_esc params and uses them directly as knot-spline approach for the ionizing emissitivity.
 
+
         if z<3.0:
             return f_esc.params[0]
-        elif z >15.0:
+        elif z >18.0:
             return f_esc.params[-1]
         else:
             #I know it's bad to interpolate at every step.  Sue me.
-            z_list = np.linspace(3.0,15.0,5)
-            n_gamma = interp1d(z_list,f_esc.params,kind='cubic')
+            z_list = np.linspace(3.0,18.0,6)
+            n_gamma = interp1d(z_list,f_esc.params,kind='linear')
+
             return np.max([0.0,n_gamma(z)])
 
     elif params.ion_model=="Standard":
@@ -374,6 +379,8 @@ def tau_calculator(x):
     #Initiate f_esc object
     f_esc = f_esc_funct(f_esc_flag, f_esc_params)
 
+    bad = False
+
     def derivs(z, Q):
         """The Q'(z0) = derivs(z, Q)"""
 
@@ -392,7 +399,7 @@ def tau_calculator(x):
     if params.ion_model=="Standard":
         z0= 25.0
     elif params.ion_model=="Nonparametric":
-        z0= 15.0
+        z0= 17.9
     else:
         raise Exception('This ion model not supported.')
     solver.set_initial_value(Q0,z0)
@@ -405,16 +412,21 @@ def tau_calculator(x):
         solver.integrate(solver.t + dz)
         z_ode.append(solver.t)
         Q_ode.append(solver.y)
-        #print solver.t, solver.y
+        #print "z and Q:", solver.t, solver.y
 
+    if z_ode[-1]>17.0:
+        #Reionization happens way too early
+        bad = True
 
     #Set up interpolating function
     if len(z_ode) > 3 and len(Q_ode)>3:
         naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='cubic')
     elif len(z_ode)>=2 and len(Q_ode)>=2:
+        #Acts like instantaneous reioniz at z0, but could be at much higher z.
+        bad = True
         naive_Q = interp1d(np.array(z_ode),np.array(Q_ode).flatten(),kind='linear')
     else:
-        naive_Q = lambda z: Q_ode[0]
+        bad = True
         print "z_ode", z_ode
         print "Q_ode", Q_ode
         raise Exception('The Q integrator took only one step.')
@@ -441,10 +453,24 @@ def tau_calculator(x):
     #Calculate \tau
     (tau, dtau) = quad(tau_integrand, 0.0, z0)
 
-    if dtau > 1e-4:
-        raise Exception('tau integrator has large error.')
+    if np.abs(tau > 1e-6):
+        if np.abs(dtau/tau) > 1e-2: #percent-level error
+            if tau > 0.15:
+                bad=True #Doesn't matter, too large
+            else:
+                print "This is tau:", tau
+                print "This is dtau:", dtau
+                raise Exception('tau integrator has large error.')
+    else:
+        if np.abs(dtau)>1e-3:
+            if tau > 0.15:
+                bad=True #Doesn't matter, too large
+            else:
+                print "This is tau:", tau
+                print "This is dtau:", dtau
+                raise Exception('tau integrator has large error.')
 
-    return tau, Q_of_z
+    return tau, Q_of_z, bad
 
 
 def logprior(x):
@@ -468,6 +494,10 @@ def logprior(x):
         elif f_esc_flag=="Polint":
             if any(f_esc_params<0.0) or any(f_esc_params>1.0):
                 bad = True
+            if params.f_esc_monotonic:
+                if  any([f_sort != f_nosort for f_sort, f_nosort in zip(np.sort(f_esc_params),f_esc_params)]):
+                #if np.sort(f_esc_params)!=f_esc_params:
+                    bad = True
         elif f_esc_flag == "Tanh":
             if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
                 bad = True
@@ -480,9 +510,13 @@ def logprior(x):
         else:
             raise Exception('This f_esc_flag not implemented')
 
+
     elif params.ion_model=="Nonparametric":
 
         if any(f_esc_params<0.0):
+            bad = True
+
+        elif np.mean(f_esc_params[-4]>1e-18):
             bad = True
 
     else:
@@ -491,7 +525,7 @@ def logprior(x):
     if c_hii<1.0 or c_hii>5.0:
         bad = True
 
-    if photon_norm_factor <24.0 or photon_norm_factor>26.0:
+    if photon_norm_factor <24.0 or photon_norm_factor>27.0:
         bad = True
 
     if bad:
@@ -506,11 +540,12 @@ def loglike(tau,Q,x):
 
     #2sig constraint from McGreer+, 1411.5375 as a step function
     try:
-        if Q(z=5.9)<0.84:
+        #if Q(z=5.9)<0.84:
+        if any(map(lambda z: Q(z)<0.84,np.linspace(0,5.9,10))):
             #print "Caught by Q"
             return -np.inf
     except:
-        raise TypeError('Q is not callable with real argument.')
+        raise TypeError('Call to Q did not work.')
 
     #2\sigma constraint from Boutsia et al 2011
     if params.ion_model=="Standard":
@@ -568,13 +603,25 @@ def logpost(x):
 
     #Likelihood
 
-    tau, Q = tau_calculator(x)
+    tau, Q, bad = tau_calculator(x)
+
+    if bad:
+        like = -np.inf
+    else:
+        like = loglike(tau, Q, x)
 
 
-    like = loglike(tau, Q, x)
+        #print "this is tau", tau, Q(5.9)
+        #print "this is loglike", like
+        #print "this is logprior", prior
+        #print "this is bad", bad
+        if np.mod(globe.print_counter,100)==0:
+            print "----------------------", globe.print_counter
+            print "this is tau", tau, Q(5.9)
+            print "this is loglike", like
+            print "this is logprior", prior
+            print "this is bad", bad
 
-    #print "this is tau", tau, Q(5.9)
-    #print "this is loglike", like
-
+    globe.print_counter +=1
 
     return prior + like

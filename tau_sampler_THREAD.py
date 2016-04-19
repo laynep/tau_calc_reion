@@ -17,7 +17,7 @@ params = importlib.import_module(modname)
 
 
 nwalkers = 300
-niterations = 2000
+niterations = 1000
 nthreads = 16
 
 save_fname = params.save_fname
@@ -33,7 +33,7 @@ if p0_random:
         if params.ion_model=="Standard":
 
             if tau.f_esc_flag == "Power":
-                p0_here.append(np.random.rand()) #f_8
+                p0_here.append(np.random.rand()*0.1) #f_8
                 p0_here.append(np.random.rand()*4.0) #\alpha
             elif tau.f_esc_flag == "Linear":
                 p0_here.append(np.random.rand()) #f_8
@@ -41,9 +41,9 @@ if p0_random:
             elif tau.f_esc_flag == "Polint":
 
                 p0_here.append(np.random.rand()*0.1) #f_3
-                p0_here.append(np.random.rand()) #f_6
-                p0_here.append(np.random.rand()) #f_9
-                p0_here.append(np.random.rand()) #f_12
+                p0_here.append(np.random.rand()*(0.2-0.1)+0.1) #f_6
+                p0_here.append(np.random.rand()*(0.3-0.2)+0.2) #f_9
+                p0_here.append(np.random.rand()*(0.4-0.3)+0.3) #f_12
 
         elif params.ion_model=="Nonparametric":
 
@@ -52,6 +52,7 @@ if p0_random:
             p0_here.append(np.random.rand()*1e-19) #emiss_9
             p0_here.append(np.random.rand()*1e-19) #emiss_12
             p0_here.append(np.random.rand()*1e-19) #emiss_15
+            p0_here.append(np.random.rand()*1e-19) #emiss_18
 
         else:
             raise Exception('This ion model not implemented.')
