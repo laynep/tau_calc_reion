@@ -1,13 +1,13 @@
 #Parameters file
 
 #Define f_esc parameters
-#f_esc_flag ='Power'
-f_esc_flag ='Polint'
+f_esc_flag ='Power'
+#f_esc_flag ='Polint'
 #f_esc_flag ='Linear'
 
 #Define the data type
-data_type = "tau_only"
-#data_type = "marg_cosmo"
+#data_type = "tau_only"
+data_type = "marg_cosmo"
 
 data_file = 'data/total_TTTEEE_lowTEB.csv'
 #data_file = 'data/total_TT_lowl_lensing.csv'
@@ -31,7 +31,7 @@ directory = '/home/laynep/reion_importance/'
 schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
-save_fname = "chain_polint_TTTEEE_tauonly_xiion.dat"
+save_fname = "chain_power_TTTEEE_margcosmo.dat"
 
 #Use random ICs for chains or load from file
 p0_random = True

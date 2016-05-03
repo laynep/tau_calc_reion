@@ -1,0 +1,99 @@
+------
+params_ngamma_lensing_BAO.py:
+best fit tau = 0.067
+
+------
+params_ngamma_planck16.py:
+best fit tau = 0.055
+best fit x0=[-19.,-19.00081313,-20.07546997,-27.20121447,-25.5848711,-20.87907339,4.01296801]
+
+
+------
+params_ngamma_TTTEEE.py:
+best fit tau = 0.079
+best fit x0=[-19.,-18.99965742,-19.11645901,-19.9578294,-19.77186345,-19.22072741,3.11987847]
+
+------
+params_polint_lensing_BAO_Bouwens.py:
+best fit tau = 0.067
+
+------
+params_polint_lensing_BAO_Scorch.py:
+best fit tau = 0.067
+
+------
+params_polint_planck16_Bouwens.py:
+best fit tau = 0.055
+
+------
+params_polint_planck16_Bouwens_xiion.py:
+best fit tau = 0.055
+
+------
+params_polint_planck16_Scorch.py:
+best fit tau = 0.055
+
+------
+params_polint_planck16_Scorch_xiion.py:
+best fit tau = 0.055
+best fit x0=[0.0602857,0.29674142,0.4457205,0.52448089,24.51474902]
+
+------
+params_polint_TTTEEE_Bouwens.py:
+best fit tau = 0.079
+
+------
+params_polint_TTTEEE_Bouwens_xiion.py:
+best fit tau = 0.079
+
+------
+params_polint_TTTEEE_Scorch.py:
+best fit tau = 0.079
+
+------
+params_polint_TTTEEE_Scorch_xiion.py:
+best fit tau = 0.079
+
+------
+params_power_lensing_BAO_Bouwens.py:
+best fit tau = 0.067
+
+------
+params_power_lensing_BAO_Scorch.py:
+best fit tau = 0.067
+
+------
+params_power_planck16_Bouwens.py:
+best fit tau = 0.055
+
+------
+params_power_planck16_Bouwens_xiion.py:
+best fit tau = 0.055
+
+------
+params_power_planck16_Scorch.py:
+best fit tau = 0.055
+
+------
+params_power_planck16_Scorch_xiion.py:
+best fit tau = 0.055
+
+------
+params_power_TTTEEE_Bouwens.py:
+best fit tau = 0.079
+
+------
+params_power_TTTEEE_Bouwens_xiion.py:
+best fit tau = 0.079
+
+------
+params_power_TTTEEE_Scorch_margcosmo.py:
+best fit tau = 0.079
+
+------
+params_power_TTTEEE_Scorch.py:
+best fit tau = 0.079
+
+------
+params_power_TTTEEE_Scorch_xiion.py:
+best fit tau = 0.079

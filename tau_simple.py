@@ -11,14 +11,11 @@ x0=[]
 #x0.append(5.47992470e-16)
 #x0.append(4.18676655e+00)
 
-x0=[0.2, 0.00, 3.0]
-
-#x0= [1e-15, 1e-20, 5e-22, 1e-21, 1e-25, 1e-25, 3.0]
-#x0= [1e-15, 1e-15, 1e-20, 1e-20, 1e-20, 1e-20, 3.0]
-
-x0= [4.17250233273e-16, 1.77888086156e-17, 2.75708251745e-19, 2.79253311941e-20, 5.50774139926e-20, 1.68754049981e-30, 1.41738459482]
+x0= [0.05, 0.1, 0.15, 0.2, 0.25, 27.0]
+x0= [0.5*0.0833101816631, 0.5*0.17017923816, 0.5*0.294128625116, 0.5*0.337454428298, 24.000 ]
 
 x0=np.array(x0)
+
 
 tau0= tau.tau_calculator(x0)
 
@@ -41,7 +38,7 @@ print "Is params bad?", tau0[2]
 
 #print "This is n_H:", tau.comov_h_density(ombh2=0.022)
 
-print "this is Q"
-z_list = np.linspace(0,25.0,100)
-for q,z in zip(map(tau0[1], z_list), z_list):
-    print z,q
+#print "this is Q"
+#z_list = np.linspace(0,25.0,100)
+#for q,z in zip(map(tau0[1], z_list), z_list):
+#    print z,q

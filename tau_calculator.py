@@ -46,6 +46,15 @@ class f_esc_funct():
             self.z_pos = np.linspace(3,12,4)
             self.f_polint = interp1d(self.z_pos, f_esc_params[0:4], kind='cubic')
             self.f_esc = lambda z: self.f_esc_POLINT(z, f_esc_params)
+
+        #elif f_esc_flag == "LuminPolint":
+        #    self.z_pos = np.linspace(3,12,4)
+        #    L_SF =  mag_to_lumin(mag=-10.0)
+        #    self.L_pos = np.linspace(np.log10(L_SF),np.log10(L_SF)+3.0,4)
+        #    self.L_pos = 10.0**(self.L_pos)
+        #    fesc_vals = np.array([[f_esc_params[0:4]],[f_esc_params[4:8]],[f_esc_params[8:12]],[f_esc_params[12:]])
+        #    self.f_luminpolint = interp2d(self.z_pos,self.L_pos,fesc_vals)
+
         else:
             raise Exception('This f_esc_flag not implemented.')
 
@@ -106,6 +115,9 @@ class global_params(object):
         self.m_list = schecter[:,2]
         self.alpha_list = schecter[:,3]
         self.muv_list = schecter[:,4]
+
+        self.phi_of_z, self.m_of_z, self.alpha_of_z, self.muv_of_z = map(lambda x: interp1d(self.z_list,x,kind='cubic'),
+                            [self.phi_list, self.m_list, self.alpha_list, self.muv_list])
 
         self.mpc_to_cm = 3.086e24
         self.mass_h = 1.674e-24
@@ -236,6 +248,8 @@ def unpack(x):
             index+=4
         elif f_esc_flag=="Tanh":
             index+=4
+        #elif f_esc_flag=="LuminPolint":
+        #    index+=16
         else:
             raise Exception('This f_esc_flag not supported.')
 
@@ -246,41 +260,76 @@ def unpack(x):
     else:
         raise Exception('This ion model not supported.')
 
-    f_esc_params = x[0:index]
+    try:
+        f_esc_params = x[0:index]
+    except:
+        raise Exception('This index', index, 'out of range.')
 
     if 'C_HII' in params.nuisance:
-        c_hii = x[index]
+        try:
+            c_hii = x[index]
+        except:
+            raise Exception('This index', index, 'out of range.')
         index += 1
     else:
         c_hii = 3.0
+
     if 'xi_ion' in params.nuisance:
-        photon_norm_factor = x[index]
+        try:
+            photon_norm_factor = x[index]
+        except:
+            raise Exception('This index', index, 'out of range.')
         index += 1
     else:
         photon_norm_factor = 25.2
+
+    if 'dMSFdz' in params.nuisance:
+        try:
+            dMSFdz = x[index]
+        except:
+            raise Exception('This index', index, 'out of range.')
+        index += 1
+    else:
+        dMSFdz = 0.0
 
     if data_type == "tau_only":
         #Can get these either from x or from fixed
         ombh2 = globe.ombh2
         ommh2 = globe.ommh2
     elif data_type == "marg_cosmo":
-        ombh2 = x[index]
+        try:
+            ombh2 = x[index]
+        except:
+            raise Exception('This index', index, 'out of range.')
         index += 1
-        ommh2 = x[index]
+
+        try:
+            ommh2 = x[index]
+        except:
+            raise Exception('This index', index, 'out of range.')
+        index += 1
     else:
         raise Exception('This data_type not supported.')
 
-    return f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2
+    return f_esc_params, c_hii, photon_norm_factor, dMSFdz, ombh2, ommh2
 
 def mag_to_lumin(mag):
     """Converts AB magnitude to luminosity."""
     conv_factor = 4.345e20
     return float(conv_factor*10.0**(-mag/2.5))
 
-def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
+def lumin_to_mag(lumin):
+    """Converts luminosity to AB magnitude."""
+    conv_factor = 4.345e20
+    return float(-2.5*np.log10(lumin/conv_factor))
+
+def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False, dMSFdz=0.0):
     """Get the Schecter parameters as a function of redshift from file."""
 
     logical = type(False)
+
+    use_default = (type(z_list) == logical) and (type(phi_list)  == logical) and (type(m_list)  == logical) and (type(alpha_list)  == logical) and (type(muv_list)  == logical)
+
     if (type(z_list) == logical):
         z_list = globe.z_list
     if (type(phi_list)  == logical):
@@ -292,11 +341,19 @@ def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,
     if (type(muv_list)  == logical):
         muv_list = globe.muv_list
 
+
     #Use range limits if z extends beyond the interpolation list
     if z<np.min(z_list):
         phi_star, m_star, alpha_star, muv_star = phi_list[0],m_list[0],alpha_list[0],muv_list[0]
     elif z>np.max(globe.z_list):
         phi_star, m_star, alpha_star, muv_star = phi_list[-1], m_list[-1], alpha_list[-1],muv_list[-1]
+
+    elif use_default:
+
+        phi_star = globe.phi_of_z(z)
+        m_star = globe.m_of_z(z)
+        alpha_star = globe.alpha_of_z(z)
+        muv_star = globe.muv_of_z(z)
 
     else:
         #Interpolate
@@ -305,36 +362,41 @@ def schecter_params(z,z_list=False,phi_list=False,m_list=False,alpha_list=False,
 
         phi_star, m_star, alpha_star, muv_star = phi(z), m(z), alpha(z), muv(z)
 
+
     L_star = mag_to_lumin(m_star)
-    L_SF = mag_to_lumin(muv_star)
+
+    if z >= 6.0:
+        L_SF = mag_to_lumin(muv_star + dMSFdz*(z-6.0)) #Linear redshift evolution
+    else:
+        L_SF = mag_to_lumin(muv_star) #No extra redshift evolution
 
     #Convert phi into cgs --- currently Mpc^-3
     phi_star *= globe.mpc_to_cm**(-3.0)
 
     return float(phi_star), float(L_star), float(alpha_star), float(L_SF)
 
-def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
+def ioniz_emiss(z, f_esc, photon_norm_factor,dMSFdz,z_list=False,phi_list=False,m_list=False,alpha_list=False,muv_list=False):
 
     if params.ion_model=="Nonparametric":
         #This overrides the f_esc params and uses them directly as knot-spline approach for the ionizing emissitivity.
 
 
         if z<3.0:
-            return f_esc.params[0]
+            return 10.0**f_esc.params[0]
         elif z >18.0:
-            return f_esc.params[-1]
+            return 10.0**f_esc.params[-1]
         else:
             #I know it's bad to interpolate at every step.  Sue me.
             z_list = np.linspace(3.0,18.0,6)
             n_gamma = interp1d(z_list,f_esc.params,kind='linear')
 
-            return np.max([0.0,n_gamma(z)])
+            return np.max([0.0,10.0**n_gamma(z)])
 
     elif params.ion_model=="Standard":
 
         L_bright = mag_to_lumin(globe.m_bright)
 
-        phi_star, L_star, alpha, L_faint = schecter_params(z,z_list,phi_list,m_list,alpha_list,muv_list)
+        phi_star, L_star, alpha, L_faint = schecter_params(z,z_list,phi_list,m_list,alpha_list,muv_list,dMSFdz)
 
         prefactor = -2.5/np.log(10.0)
         prefactor *= 10.0**(photon_norm_factor)
@@ -344,7 +406,9 @@ def ioniz_emiss(z, f_esc, photon_norm_factor,z_list=False,phi_list=False,m_list=
             #Close approximation
             return prefactor*(alpha+1.0)**(-1.0)*(L_faint/L_star)**(alpha+1.0)
         else:
-            return prefactor*(mpm.gammainc(1.0+alpha,L_bright/L_star) - mpm.gammainc(1.0+alpha,L_faint/L_star))
+            #return prefactor*(mpm.gammainc(1.0+alpha,L_bright/L_star) - mpm.gammainc(1.0+alpha,L_faint/L_star))
+            #Close approximation
+            return -1.0*prefactor*mpm.gammainc(1.0+alpha,L_faint/L_star)
 
     else:
         raise Exception('This model for the ionizing emissitivity is not implemented.')
@@ -371,10 +435,18 @@ def electron_from_helium(z):
     else:
         return 2.0
 
+def global_21cm(z,Q,Ombh2,Ommh2):
+    """Calculates spatially averaged difference in 21cm brightness temperature and CMB temperature. Assumes T_spin >>> T_CMB and globally averages.  In units of mK."""
+
+    T0 = 38.6*(Ombh2/0.045)*np.sqrt((0.27/Ommh2)*((1.0+z)/10.0))
+    x_H = 1.0-Q(z)
+
+    return T0*x_H
+
 
 def tau_calculator(x):
     """Calculate the Thomson optical depth from the galaxy reionization parameters."""
-    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, dMSFdz, ombh2, ommh2 = unpack(x)
 
     #Initiate f_esc object
     f_esc = f_esc_funct(f_esc_flag, f_esc_params)
@@ -387,7 +459,7 @@ def tau_calculator(x):
         hub = hubble(z, ommh2)
         trec = t_recomb(z, c_hii)
         nh = comov_h_density(ombh2)
-        ion = ioniz_emiss(z, f_esc, photon_norm_factor)
+        ion = ioniz_emiss(z, f_esc, photon_norm_factor, dMSFdz)
 
         return -1.0*(1.0/hub/(1.0+z))*(ion/nh/(1.0+z)**3.0 - Q/trec)
 
@@ -417,6 +489,19 @@ def tau_calculator(x):
     if z_ode[-1]>17.0:
         #Reionization happens way too early
         bad = True
+
+    #Require that LyC photon production rate exceeds recombination rate for subsequent evolution
+    if z_ode[-1]>2.0:
+        z_list = np.linspace(2.0,z_ode[-1],10)
+        nh = comov_h_density(ombh2)
+        for z in z_list:
+            ion = ioniz_emiss(z, f_esc, photon_norm_factor, dMSFdz)
+            trec = t_recomb(z, c_hii)
+            if ion/nh < 1.0/trec:
+                print "failing here!"
+                bad = True
+                break
+
 
     #Set up interpolating function
     if len(z_ode) > 3 and len(Q_ode)>3:
@@ -455,7 +540,7 @@ def tau_calculator(x):
 
     if np.abs(tau > 1e-6):
         if np.abs(dtau/tau) > 1e-2: #percent-level error
-            if tau > 0.15:
+            if tau - dtau > 0.15:
                 bad=True #Doesn't matter, too large
             else:
                 print "This is tau:", tau
@@ -474,7 +559,7 @@ def tau_calculator(x):
 
 
 def logprior(x):
-    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, dMSFdz, ombh2, ommh2 = unpack(x)
 
     bad = False
     const = 1.0  #Unnormalized prior
@@ -495,9 +580,17 @@ def logprior(x):
             if any(f_esc_params<0.0) or any(f_esc_params>1.0):
                 bad = True
             if params.f_esc_monotonic:
-                if  any([f_sort != f_nosort for f_sort, f_nosort in zip(np.sort(f_esc_params),f_esc_params)]):
-                #if np.sort(f_esc_params)!=f_esc_params:
+
+                #Initiate f_esc object
+                f_esc = f_esc_funct(f_esc_flag, f_esc_params)
+                z_list = np.linspace(0.0,18.0,200)
+                f_test = np.array(map(f_esc.f_esc,z_list))
+
+                if  any([f_sort != f_nosort for f_sort, f_nosort in zip(np.sort(f_test),f_test)]):
+                #if  any([f_sort != f_nosort for f_sort, f_nosort in zip(np.sort(f_esc_params),f_esc_params)]):
+                    #print "Failing monotonicity"
                     bad = True
+
         elif f_esc_flag == "Tanh":
             if f_esc_params[0]<0.0 or f_esc_params[0]>1.0:
                 bad = True
@@ -513,10 +606,17 @@ def logprior(x):
 
     elif params.ion_model=="Nonparametric":
 
-        if any(f_esc_params<0.0):
+        #Sample escaped photon prod rate density in log
+        lower_lim = 1e1*3.17089e-17*comov_h_density(ombh2) # photon/sec/cm^3
+        upper_lim = 1e6*3.17089e-17*comov_h_density(ombh2) # photon/sec/cm^3
+
+        lower_lim += np.log10(lower_lim)
+        upper_lim += np.log10(upper_lim)
+
+        if any(f_esc_params<lower_lim):
             bad = True
 
-        elif np.mean(f_esc_params[-4]>1e-18):
+        elif any(f_esc_params>upper_lim):
             bad = True
 
     else:
@@ -525,7 +625,10 @@ def logprior(x):
     if c_hii<1.0 or c_hii>5.0:
         bad = True
 
-    if photon_norm_factor <24.0 or photon_norm_factor>27.0:
+    if photon_norm_factor <23.5 or photon_norm_factor>27.5:
+        bad = True
+
+    if dMSFdz > 0.5 or dMSFdz < - 1.0:
         bad = True
 
     if bad:
@@ -534,7 +637,7 @@ def logprior(x):
         return const, True
 
 def loglike(tau,Q,x):
-    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, dMSFdz, ombh2, ommh2 = unpack(x)
 
     #Non-CMB constraints
 
@@ -595,7 +698,7 @@ def loglike(tau,Q,x):
 
 def logpost(x):
 
-    f_esc_params, c_hii, photon_norm_factor, ombh2, ommh2 = unpack(x)
+    f_esc_params, c_hii, photon_norm_factor, dMSFdz, ombh2, ommh2 = unpack(x)
 
     prior, success = logprior(x)
     if not success:
@@ -613,7 +716,6 @@ def logpost(x):
 
         #print "this is tau", tau, Q(5.9)
         #print "this is loglike", like
-        #print "this is logprior", prior
         #print "this is bad", bad
         if np.mod(globe.print_counter,100)==0:
             print "----------------------", globe.print_counter
