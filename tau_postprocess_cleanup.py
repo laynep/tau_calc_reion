@@ -1,4 +1,4 @@
-#Stupid post processor
+#Stupid post processor that removes bad points from data that are leftover because the sampler isn't as smart as it's claimed to be.
 
 import numpy as np
 import tau_calculator as tau

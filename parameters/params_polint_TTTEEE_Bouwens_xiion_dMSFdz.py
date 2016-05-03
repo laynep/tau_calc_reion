@@ -18,20 +18,20 @@ data_file = 'data/total_TTTEEE_lowTEB.csv'
 use_lowfesc_const = True
 
 #Nuisance params
-nuisance = ['C_HII','xi_ion']
+nuisance = ['C_HII','xi_ion','dMSFdz']
 
 #Where the main reionization directory is
-directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
-#directory = '/home/laynep/reion_importance/'
+#directory = '/Users/laynep/work/reionization/importance_sampler/python_implementation/'
+directory = '/home/laynep/reion_importance/'
 
 #Which set of Schecter params to use for the GLF
 #schecter_fname = 'schecter_params/schecter_params.txt'
-#schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
+schecter_fname = 'schecter_params/schecter_params_Bouwens.txt'
 #schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.80.txt'
-schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
+#schecter_fname = 'schecter_params/schecter_params_om=0.30_h0=0.70_sig8=0.82.txt'
 
 #Save the chains to this file
-save_fname = "chain_polint_TTTEEE_tauonly_xiion.dat"
+save_fname = "chain_polint_TTTEEE_Bouwens_tauonly_xiion_dMSFdz.dat"
 
 #Use random ICs for chains or load from file
 p0_random = True
