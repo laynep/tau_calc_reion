@@ -43,3 +43,7 @@ ion_model = "Standard"
 
 #Require f_esc to be monotonically increasing with z for the polint model
 f_esc_monotonic = True
+
+
+#Best fit value
+bestfit = [4.12646171,0.08083335,1.03433895,1.77238201,24.99664381,-0.16961182]

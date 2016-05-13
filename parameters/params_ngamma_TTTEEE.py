@@ -44,3 +44,8 @@ ion_model = "Nonparametric"
 
 #Require f_esc to be monotonically increasing with z for the polint model
 f_esc_monotonic = True
+
+
+#Best fit value
+bestfit = [4.12646171,-18.93759088,-18.41955512,-19.01753012,-21.4755585,-18.80509756,-19.0543306,4.18553261]
+ 
