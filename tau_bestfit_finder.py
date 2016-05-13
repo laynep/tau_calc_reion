@@ -51,10 +51,6 @@ def closest_tau(x):
 #Loop through chain and find closest
 data = np.loadtxt(params.save_fname)
 
-data = np.array(filter(lambda x: x[0]>4.687, data))
-print len(data)
-sys.exit()
-
 data = data[data[:,0].argsort()[::-1]] #Sort by likelihood (1st colmn)
 maxlike = data[0,0]
 
@@ -72,5 +68,14 @@ for dat in data:
             bestfit = dat
             print "new best fit:", bestfit
 
+
 print "This is the likelihood:", params.data_file
 print "This is the best fit value:", bestfit
+
+
+save_fname = params.data_file[:-4]+'_bestfit.dat'
+np.savetxt(save_fname, bestfit)
+#fname = open(save_fname, "a")
+#
+#for k in bestfit:
+#    fname.write("%s " % str(k))
