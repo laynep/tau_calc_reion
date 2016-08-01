@@ -1,0 +1,1 @@
+This is a project to perform non-parametric estimation of the escape fraction of Lyman-continuum flux escaping from galaxies into the IGM.  We use uniform random processes to model the escape fraction as a function of redshift and constrain it with Hubble and Planck observations, which give limits on the galaxy luminosity function and the Thomson optical depth, respectively.
